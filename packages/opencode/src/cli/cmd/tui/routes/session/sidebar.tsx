@@ -2,16 +2,28 @@ import { useSync } from "@tui/context/sync"
 import { createMemo, For, Show, Switch, Match } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useTheme } from "../../context/theme"
-import { Locale } from "@/util/locale"
-import path from "path"
 import type { AssistantMessage } from "@opencode-ai/sdk/v2"
-import { Global } from "@/global"
 import { Installation } from "@/installation"
-import { useKeybind } from "../../context/keybind"
 import { useDirectory } from "../../context/directory"
 import { useKV } from "../../context/kv"
 import { TodoItem } from "../../component/todo-item"
 import { lspcolor, lspicon } from "@tui/util/icon"
+
+const contextColor = (theme: ReturnType<typeof useTheme>["theme"], n?: number | null) => {
+  if (n == null) return theme.textMuted
+  if (n >= 35) return theme.error
+  if (n >= 30) return theme.warning
+  return theme.success
+}
+
+const progress = (n?: number | null, w = 18) => {
+  if (n == null) return { fill: "", empty: "▓".repeat(w) }
+  const fill = Math.max(0, Math.min(w, Math.round((n / 100) * w)))
+  return {
+    fill: "█".repeat(fill),
+    empty: "▓".repeat(w - fill),
+  }
+}
 
 export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
   const sync = useSync()
@@ -60,6 +72,8 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
       percentage: model?.limit.context ? Math.round((total / model.limit.context) * 100) : null,
     }
   })
+  const contextFg = createMemo(() => contextColor(theme, context()?.percentage))
+  const bar = createMemo(() => progress(context()?.percentage))
 
   const directory = useDirectory()
   const kv = useKV()
@@ -103,9 +117,12 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
               <text fg={theme.text}>
                 <b>Context</b>
               </text>
-              <text fg={theme.textMuted}>{context()?.tokens ?? 0} tokens</text>
-              <text fg={theme.textMuted}>{context()?.percentage ?? 0}% used</text>
-              <text fg={theme.textMuted}>{cost()} spent</text>
+              <text fg={theme.text}> {context()?.tokens ?? 0}</text>
+              <text fg={theme.text}> {cost().replace(/^[^\d-]+/, "")}</text>
+              <text>
+                <span style={{ fg: contextFg() }}>{bar().fill}</span>
+                <span style={{ fg: theme.borderSubtle }}>{bar().empty}</span>
+              </text>
             </box>
             <Show when={mcpEntries().length > 0}>
               <box>
