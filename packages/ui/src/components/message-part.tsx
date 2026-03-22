@@ -96,6 +96,7 @@ interface Diagnostic {
   }
   message: string
   severity?: number
+  suggestions?: string[]
 }
 
 function getDiagnostics(
@@ -104,7 +105,41 @@ function getDiagnostics(
 ): Diagnostic[] {
   if (!diagnosticsByFile || !filePath) return []
   const diagnostics = diagnosticsByFile[filePath] ?? []
-  return diagnostics.filter((d) => d.severity === 1).slice(0, 3)
+  return diagnostics
+    .filter((d) => (d.severity || 1) <= 4)
+    .slice()
+    .sort((a, b) => {
+      const left = a.severity || 1
+      const right = b.severity || 1
+      if (left !== right) return left - right
+      if (a.range.start.line !== b.range.start.line) return a.range.start.line - b.range.start.line
+      return a.range.start.character - b.range.start.character
+    })
+}
+
+function diagnosticLabel(severity?: number) {
+  if (severity === 2) return ""
+  if (severity === 3) return ""
+  if (severity === 4) return ""
+  return ""
+}
+
+function diagnosticName(i18n: ReturnType<typeof useI18n>, severity?: number) {
+  if (severity === 2) return i18n.t("ui.messagePart.diagnostic.warning")
+  if (severity === 3) return "Info"
+  if (severity === 4) return "Hint"
+  return i18n.t("ui.messagePart.diagnostic.error")
+}
+
+function suggestionName() {
+  return "Suggestion"
+}
+
+function diagnosticsTone(severity?: number) {
+  if (severity === 2) return "warning"
+  if (severity === 3) return "info"
+  if (severity === 4) return "hint"
+  return "error"
 }
 
 function DiagnosticsDisplay(props: { diagnostics: Diagnostic[] }): JSX.Element {
@@ -114,12 +149,16 @@ function DiagnosticsDisplay(props: { diagnostics: Diagnostic[] }): JSX.Element {
       <div data-component="diagnostics">
         <For each={props.diagnostics}>
           {(diagnostic) => (
-            <div data-slot="diagnostic">
-              <span data-slot="diagnostic-label">{i18n.t("ui.messagePart.diagnostic.error")}</span>
+            <div data-slot="diagnostic" data-tone={diagnosticsTone(diagnostic.severity)}>
+              <span data-slot="diagnostic-label" title={diagnosticName(i18n, diagnostic.severity)}>
+                {diagnosticLabel(diagnostic.severity)}
+              </span>
               <span data-slot="diagnostic-location">
                 [{diagnostic.range.start.line + 1}:{diagnostic.range.start.character + 1}]
               </span>
-              <span data-slot="diagnostic-message">{diagnostic.message}</span>
+              <div data-slot="diagnostic-body">
+                <span data-slot="diagnostic-message">{diagnostic.message}</span>
+              </div>
             </div>
           )}
         </For>

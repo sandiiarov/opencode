@@ -259,12 +259,14 @@ export const ApplyPatchTool = Tool.define("apply_patch", {
       const target = change.movePath ?? change.filePath
       const normalized = Filesystem.normalizePath(target)
       const issues = diagnostics[normalized] ?? []
-      const errors = issues.filter((item) => item.severity === 1)
-      if (errors.length > 0) {
-        const limited = errors.slice(0, MAX_DIAGNOSTICS_PER_FILE)
+      const problems = LSP.Diagnostic.sort(issues.filter(LSP.Diagnostic.visible))
+      if (problems.length > 0) {
+        const limited = problems.slice(0, MAX_DIAGNOSTICS_PER_FILE)
         const suffix =
-          errors.length > MAX_DIAGNOSTICS_PER_FILE ? `\n... and ${errors.length - MAX_DIAGNOSTICS_PER_FILE} more` : ""
-        output += `\n\nLSP errors detected in ${path.relative(Instance.worktree, target).replaceAll("\\", "/")}, please fix:\n<diagnostics file="${target}">\n${limited.map(LSP.Diagnostic.pretty).join("\n")}${suffix}\n</diagnostics>`
+          problems.length > MAX_DIAGNOSTICS_PER_FILE
+            ? `\n... and ${problems.length - MAX_DIAGNOSTICS_PER_FILE} more`
+            : ""
+        output += `\n\nLSP diagnostics detected in ${path.relative(Instance.worktree, target).replaceAll("\\", "/")}, please review:\n<diagnostics file="${target}">\n${limited.map(LSP.Diagnostic.pretty).join("\n")}${suffix}\n</diagnostics>`
       }
     }
 

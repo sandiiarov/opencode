@@ -11,6 +11,7 @@ import { useKeybind } from "../../context/keybind"
 import { useDirectory } from "../../context/directory"
 import { useKV } from "../../context/kv"
 import { TodoItem } from "../../component/todo-item"
+import { lspcolor, lspicon } from "@tui/util/icon"
 
 export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
   const sync = useSync()
@@ -202,6 +203,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
                       >
                         •
                       </text>
+                      <text fg={lspcolor(item.id)}>{lspicon(item.id)}</text>
                       <text fg={theme.textMuted}>
                         {item.id} {item.root}
                       </text>

@@ -655,11 +655,23 @@
 
   [data-slot="diagnostic"] {
     display: flex;
-    align-items: baseline;
+    align-items: flex-start;
     gap: 6px;
     font-family: var(--font-family-mono);
     font-size: var(--font-size-small);
     line-height: var(--line-height-large);
+  }
+
+  [data-slot="diagnostic"][data-tone="warning"] {
+    color: var(--text-on-warning-base);
+  }
+
+  [data-slot="diagnostic"][data-tone="info"] {
+    color: var(--text-on-info-base);
+  }
+
+  [data-slot="diagnostic"][data-tone="hint"] {
+    color: var(--text-secondary);
   }
 
   [data-slot="diagnostic-label"] {
@@ -670,19 +682,54 @@
     flex-shrink: 0;
   }
 
+  [data-slot="diagnostic"][data-tone="warning"] [data-slot="diagnostic-label"] {
+    color: var(--text-on-warning-base);
+  }
+
+  [data-slot="diagnostic"][data-tone="info"] [data-slot="diagnostic-label"] {
+    color: var(--icon-info-active);
+  }
+
+  [data-slot="diagnostic"][data-tone="hint"] [data-slot="diagnostic-label"] {
+    color: var(--text-secondary);
+  }
+
   [data-slot="diagnostic-location"] {
     color: var(--text-on-critical-weak);
     flex-shrink: 0;
   }
 
+  [data-slot="diagnostic"][data-tone="warning"] [data-slot="diagnostic-location"] {
+    color: var(--text-on-warning-weak);
+  }
+
+  [data-slot="diagnostic"][data-tone="info"] [data-slot="diagnostic-location"] {
+    color: var(--text-on-info-weak);
+  }
+
+  [data-slot="diagnostic"][data-tone="hint"] [data-slot="diagnostic-location"] {
+    color: var(--text-tertiary);
+  }
+
+  [data-slot="diagnostic-body"] {
+    min-width: 0;
+  }
+
   [data-slot="diagnostic-message"] {
     color: var(--text-on-critical-base);
     word-break: break-word;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
-    line-clamp: 3;
-    overflow: hidden;
+  }
+
+  [data-slot="diagnostic"][data-tone="warning"] [data-slot="diagnostic-message"] {
+    color: var(--text-on-warning-base);
+  }
+
+  [data-slot="diagnostic"][data-tone="info"] [data-slot="diagnostic-message"] {
+    color: var(--text-on-info-base);
+  }
+
+  [data-slot="diagnostic"][data-tone="hint"] [data-slot="diagnostic-message"] {
+    color: var(--text-on-info-base);
   }
 }
 

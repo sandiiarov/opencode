@@ -24,7 +24,6 @@ export namespace LSPServer {
       .catch(() => false)
   const run = (cmd: string[], opts: Process.RunOptions = {}) => Process.run(cmd, { ...opts, nothrow: true })
   const output = (cmd: string[], opts: Process.RunOptions = {}) => Process.text(cmd, { ...opts, nothrow: true })
-
   export interface Handle {
     process: ChildProcessWithoutNullStreams
     initialization?: Record<string, any>
@@ -32,7 +31,11 @@ export namespace LSPServer {
 
   type RootFunction = (file: string) => Promise<string | undefined>
 
-  const NearestRoot = (includePatterns: string[], excludePatterns?: string[]): RootFunction => {
+  const tssrc = (root: string) =>
+    Module.resolve("typescript/lib/tsserver.js", root) ??
+    Module.resolve("typescript/lib/tsserver.js", Instance.directory)
+
+  const NearestRoot = (includePatterns: string[], excludePatterns?: string[], fallback = true): RootFunction => {
     return async (file) => {
       if (excludePatterns) {
         const excludedFiles = Filesystem.up({
@@ -51,7 +54,7 @@ export namespace LSPServer {
       })
       const first = await files.next()
       await files.return()
-      if (!first.value) return Instance.directory
+      if (!first.value) return fallback ? Instance.directory : undefined
       return path.dirname(first.value)
     }
   }
@@ -95,12 +98,21 @@ export namespace LSPServer {
   export const Typescript: Info = {
     id: "typescript",
     root: NearestRoot(
-      ["package-lock.json", "bun.lockb", "bun.lock", "pnpm-lock.yaml", "yarn.lock"],
+      [
+        "tsconfig.json",
+        "jsconfig.json",
+        "package.json",
+        "package-lock.json",
+        "bun.lockb",
+        "bun.lock",
+        "pnpm-lock.yaml",
+        "yarn.lock",
+      ],
       ["deno.json", "deno.jsonc"],
     ),
     extensions: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"],
     async spawn(root) {
-      const tsserver = Module.resolve("typescript/lib/tsserver.js", Instance.directory)
+      const tsserver = tssrc(root)
       log.info("typescript server", { tsserver })
       if (!tsserver) return
       const proc = spawn(BunProc.which(), ["x", "typescript-language-server", "--stdio"], {
@@ -172,10 +184,30 @@ export namespace LSPServer {
 
   export const ESLint: Info = {
     id: "eslint",
-    root: NearestRoot(["package-lock.json", "bun.lockb", "bun.lock", "pnpm-lock.yaml", "yarn.lock"]),
+    root: NearestRoot([
+      "eslint.config.js",
+      "eslint.config.cjs",
+      "eslint.config.mjs",
+      "eslint.config.ts",
+      "eslint.config.cts",
+      "eslint.config.mts",
+      ".eslintrc",
+      ".eslintrc.js",
+      ".eslintrc.cjs",
+      ".eslintrc.mjs",
+      ".eslintrc.json",
+      ".eslintrc.yaml",
+      ".eslintrc.yml",
+      "package.json",
+      "package-lock.json",
+      "bun.lockb",
+      "bun.lock",
+      "pnpm-lock.yaml",
+      "yarn.lock",
+    ]),
     extensions: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts", ".vue"],
     async spawn(root) {
-      const eslint = Module.resolve("eslint", Instance.directory)
+      const eslint = Module.resolve("eslint", root)
       if (!eslint) return
       log.info("spawning eslint server")
       const serverPath = path.join(Global.Path.bin, "vscode-eslint", "server", "out", "eslintServer.js")
@@ -214,7 +246,7 @@ export namespace LSPServer {
         log.info("installed VS Code ESLint server", { serverPath })
       }
 
-      const proc = spawn(BunProc.which(), [serverPath, "--stdio"], {
+      const proc = spawn(which("node") ?? BunProc.which(), [serverPath, "--stdio"], {
         cwd: root,
         env: {
           ...process.env,
@@ -224,6 +256,12 @@ export namespace LSPServer {
 
       return {
         process: proc,
+        initialization: {
+          validate: "on",
+          workingDirectory: {
+            mode: "location",
+          },
+        },
       }
     },
   }
@@ -1086,7 +1124,7 @@ export namespace LSPServer {
     extensions: [".astro"],
     root: NearestRoot(["package-lock.json", "bun.lockb", "bun.lock", "pnpm-lock.yaml", "yarn.lock"]),
     async spawn(root) {
-      const tsserver = Module.resolve("typescript/lib/tsserver.js", Instance.directory)
+      const tsserver = tssrc(root)
       if (!tsserver) {
         log.info("typescript not found, required for Astro language server")
         return
@@ -2068,6 +2106,169 @@ export namespace LSPServer {
       return {
         process: spawn(bin, ["--lsp"], {
           cwd: root,
+        }),
+      }
+    },
+  }
+
+  export const GraphQL: Info = {
+    id: "graphql",
+    extensions: [".graphql", ".gql", ".ts", ".tsx", ".js", ".jsx", ".vue", ".svelte", ".astro"],
+    root: async (file) => {
+      const root = await NearestRoot(
+        [
+          ".graphqlrc",
+          ".graphqlrc.json",
+          ".graphqlrc.yaml",
+          ".graphqlrc.yml",
+          ".graphqlrc.js",
+          ".graphqlrc.cjs",
+          ".graphqlrc.mjs",
+          "graphql.config.js",
+          "graphql.config.json",
+          "graphql.config.yaml",
+          "graphql.config.yml",
+          "graphql.config.cjs",
+          "graphql.config.mjs",
+          "graphql.config.ts",
+          "graphql.config.cts",
+          "graphql.config.mts",
+        ],
+        undefined,
+        false,
+      )(file)
+      if (root === undefined) {
+        return undefined
+      }
+      return root
+    },
+    async spawn(root) {
+      let bin = Bun.which("graphql-lsp", {
+        PATH: process.env["PATH"] + path.delimiter + path.join(Global.Path.bin, "node_modules", ".bin"),
+      })
+
+      if (!bin) {
+        const js = path.join(Global.Path.bin, "node_modules", "graphql-language-service-cli", "bin", "graphql.js")
+
+        if (!(await Filesystem.exists(js))) {
+          if (Flag.OPENCODE_DISABLE_LSP_DOWNLOAD) return
+          log.info("installing graphql-language-service-cli")
+
+          const proc = Bun.spawn([BunProc.which(), "install", "graphql-language-service-cli"], {
+            cwd: Global.Path.bin,
+            env: {
+              ...process.env,
+              BUN_BE_BUN: "1",
+            },
+            stdout: "pipe",
+            stderr: "pipe",
+            stdin: "pipe",
+          })
+
+          const exit = await proc.exited
+          if (exit !== 0) {
+            log.error("Failed to install graphql-language-service-cli")
+            return
+          }
+        }
+        return {
+          process: spawn(BunProc.which(), ["run", js, "server", "-m", "stream"], {
+            cwd: root,
+            env: {
+              ...process.env,
+              BUN_BE_BUN: "1",
+            },
+          }),
+        }
+      }
+
+      return {
+        process: spawn(bin, ["server", "-m", "stream"], {
+          cwd: root,
+          env: {
+            ...process.env,
+            BUN_BE_BUN: "1",
+          },
+        }),
+      }
+    },
+  }
+
+  export const Stylelint: Info = {
+    id: "stylelint",
+    extensions: [".css", ".pcss", ".postcss", ".scss", ".sass", ".less", ".vue", ".svelte", ".astro"],
+    root: NearestRoot([
+      ".stylelintrc",
+      ".stylelintrc.json",
+      ".stylelintrc.yaml",
+      ".stylelintrc.yml",
+      ".stylelintrc.js",
+      ".stylelintrc.cjs",
+      ".stylelintrc.mjs",
+      ".stylelintrc.ts",
+      ".stylelintrc.cts",
+      ".stylelintrc.mts",
+      "stylelint.config.js",
+      "stylelint.config.cjs",
+      "stylelint.config.mjs",
+      "stylelint.config.ts",
+      "stylelint.config.cts",
+      "stylelint.config.mts",
+    ]),
+    async spawn(root) {
+      let bin = Bun.which("stylelint-language-server", {
+        PATH: process.env["PATH"] + path.delimiter + path.join(Global.Path.bin, "node_modules", ".bin"),
+      })
+
+      if (!bin) {
+        const js = path.join(
+          Global.Path.bin,
+          "node_modules",
+          "@stylelint",
+          "language-server",
+          "bin",
+          "stylelint-language-server.mjs",
+        )
+        if (!(await Filesystem.exists(js))) {
+          if (Flag.OPENCODE_DISABLE_LSP_DOWNLOAD) return
+          log.info("installing @stylelint/language-server")
+
+          const proc = Bun.spawn([BunProc.which(), "install", "@stylelint/language-server"], {
+            cwd: Global.Path.bin,
+            env: {
+              ...process.env,
+              BUN_BE_BUN: "1",
+            },
+            stdout: "pipe",
+            stderr: "pipe",
+            stdin: "pipe",
+          })
+
+          const exit = await proc.exited
+          if (exit !== 0) {
+            log.error("Failed to install @stylelint/language-server")
+            return
+          }
+        }
+
+        return {
+          process: spawn(BunProc.which(), ["run", js, "--stdio"], {
+            cwd: root,
+            env: {
+              ...process.env,
+              BUN_BE_BUN: "1",
+            },
+          }),
+        }
+      }
+
+      return {
+        process: spawn(bin, ["--stdio"], {
+          cwd: root,
+          env: {
+            ...process.env,
+            BUN_BE_BUN: "1",
+          },
         }),
       }
     },

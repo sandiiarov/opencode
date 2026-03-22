@@ -1,5 +1,6 @@
 import { createMemo, Match, onCleanup, onMount, Show, Switch } from "solid-js"
 import { useTheme } from "../../context/theme"
+import { lspcolor, lspicon } from "@tui/util/icon"
 import { useSync } from "../../context/sync"
 import { useDirectory } from "../../context/directory"
 import { useConnected } from "../../component/dialog-model"
@@ -67,7 +68,10 @@ export function Footer() {
               </text>
             </Show>
             <text fg={theme.text}>
-              <span style={{ fg: lsp().length > 0 ? theme.success : theme.textMuted }}>•</span> {lsp().length} LSP
+              <span style={{ fg: lsp().length > 0 ? lspcolor("typescript") : theme.textMuted }}>
+                {lspicon("typescript")}
+              </span>{" "}
+              {lsp().length} LSP
             </text>
             <Show when={mcp()}>
               <text fg={theme.text}>

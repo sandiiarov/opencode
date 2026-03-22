@@ -147,12 +147,12 @@ export const EditTool = Tool.define("edit", {
     const diagnostics = await LSP.diagnostics()
     const normalizedFilePath = Filesystem.normalizePath(filePath)
     const issues = diagnostics[normalizedFilePath] ?? []
-    const errors = issues.filter((item) => item.severity === 1)
-    if (errors.length > 0) {
-      const limited = errors.slice(0, MAX_DIAGNOSTICS_PER_FILE)
+    const problems = LSP.Diagnostic.sort(issues.filter(LSP.Diagnostic.visible))
+    if (problems.length > 0) {
+      const limited = problems.slice(0, MAX_DIAGNOSTICS_PER_FILE)
       const suffix =
-        errors.length > MAX_DIAGNOSTICS_PER_FILE ? `\n... and ${errors.length - MAX_DIAGNOSTICS_PER_FILE} more` : ""
-      output += `\n\nLSP errors detected in this file, please fix:\n<diagnostics file="${filePath}">\n${limited.map(LSP.Diagnostic.pretty).join("\n")}${suffix}\n</diagnostics>`
+        problems.length > MAX_DIAGNOSTICS_PER_FILE ? `\n... and ${problems.length - MAX_DIAGNOSTICS_PER_FILE} more` : ""
+      output += `\n\nLSP diagnostics detected in this file, please review:\n<diagnostics file="${filePath}">\n${limited.map(LSP.Diagnostic.pretty).join("\n")}${suffix}\n</diagnostics>`
     }
 
     return {

@@ -19,9 +19,62 @@ const DIAGNOSTICS_DEBOUNCE_MS = 150
 export namespace LSPClient {
   const log = Log.create({ service: "lsp.client" })
 
+  const items = (result: unknown) => {
+    if (!result || typeof result !== "object") return []
+    if (!("items" in result)) return []
+    return Array.isArray(result.items) ? result.items : []
+  }
+
+  const cfg = (input: { serverID: string; root: string; server: LSPServer.Handle }) => {
+    if (input.serverID !== "eslint") return input.server.initialization ?? {}
+    return {
+      validate: "on",
+      nodePath: null,
+      packageManager: "npm",
+      useRealpaths: false,
+      quiet: false,
+      onIgnoredFiles: "off",
+      options: {},
+      useESLintClass: false,
+      useFlatConfig: null,
+      experimental: {
+        useFlatConfig: false,
+      },
+      codeAction: {
+        disableRuleComment: {
+          enable: true,
+          location: "separateLine",
+          commentStyle: "line",
+        },
+        showDocumentation: {
+          enable: true,
+        },
+      },
+      codeActionOnSave: {
+        mode: "all",
+      },
+      format: false,
+      rulesCustomizations: [],
+      run: "onType",
+      problems: {
+        shortenToSingleLine: false,
+      },
+      workingDirectory: {
+        mode: "location",
+      },
+      workspaceFolder: {
+        name: "workspace",
+        uri: pathToFileURL(input.root).href,
+      },
+      ...(input.server.initialization ?? {}),
+    }
+  }
+
   export type Info = NonNullable<Awaited<ReturnType<typeof create>>>
 
-  export type Diagnostic = VSCodeDiagnostic
+  export type Diagnostic = VSCodeDiagnostic & {
+    suggestions?: string[]
+  }
 
   export const InitializeError = NamedError.create(
     "LSPInitializeError",
@@ -49,25 +102,64 @@ export namespace LSPClient {
       new StreamMessageWriter(input.server.process.stdin as any),
     )
 
+    let codeAction = false
+
     const diagnostics = new Map<string, Diagnostic[]>()
+
+    const suggest = async (file: string, diagnostic: Diagnostic) => {
+      if (!codeAction) return diagnostic
+      const result = await withTimeout(
+        connection
+          .sendRequest("textDocument/codeAction", {
+            textDocument: {
+              uri: pathToFileURL(file).href,
+            },
+            range: diagnostic.range,
+            context: {
+              diagnostics: [diagnostic],
+            },
+          })
+          .catch(() => undefined),
+        1_500,
+      ).catch(() => undefined)
+      if (!Array.isArray(result)) return diagnostic
+      const suggestions = [
+        ...new Set(result.flatMap((item) => (typeof item?.title === "string" ? [item.title] : []))),
+      ].slice(0, 3)
+      if (suggestions.length === 0) return diagnostic
+      return {
+        ...diagnostic,
+        suggestions,
+      }
+    }
+
+    const enrich = async (file: string, arr: Diagnostic[]) => {
+      if (arr.length === 0) return arr
+      return Promise.all(arr.map((diagnostic) => suggest(file, diagnostic)))
+    }
+
+    const store = async (file: string, arr: Diagnostic[]) => {
+      const next = await enrich(file, arr)
+      const exists = diagnostics.has(file)
+      diagnostics.set(file, next)
+      if (!exists && input.serverID === "typescript") return
+      Bus.publish(Event.Diagnostics, { path: file, serverID: input.serverID })
+    }
+
     connection.onNotification("textDocument/publishDiagnostics", (params) => {
       const filePath = Filesystem.normalizePath(fileURLToPath(params.uri))
       l.info("textDocument/publishDiagnostics", {
         path: filePath,
         count: params.diagnostics.length,
       })
-      const exists = diagnostics.has(filePath)
-      diagnostics.set(filePath, params.diagnostics)
-      if (!exists && input.serverID === "typescript") return
-      Bus.publish(Event.Diagnostics, { path: filePath, serverID: input.serverID })
+      void store(filePath, params.diagnostics)
     })
     connection.onRequest("window/workDoneProgress/create", (params) => {
       l.info("window/workDoneProgress/create", params)
       return null
     })
     connection.onRequest("workspace/configuration", async () => {
-      // Return server initialization options
-      return [input.server.initialization ?? {}]
+      return [cfg(input)]
     })
     connection.onRequest("client/registerCapability", async () => {})
     connection.onRequest("client/unregisterCapability", async () => {})
@@ -79,8 +171,33 @@ export namespace LSPClient {
     ])
     connection.listen()
 
+    const files: {
+      [path: string]: number
+    } = {}
+
+    const pull = async (file: string) => {
+      const path = Filesystem.normalizePath(file)
+      const result = await connection
+        .sendRequest("textDocument/diagnostic", {
+          textDocument: {
+            uri: pathToFileURL(path).href,
+          },
+        })
+        .catch(() => undefined)
+      if (!result) return
+      const next = await enrich(path, items(result))
+      if (next.length === 0) return
+      diagnostics.set(path, next)
+      Bus.publish(Event.Diagnostics, { path, serverID: input.serverID })
+    }
+
+    connection.onRequest("workspace/diagnostic/refresh", async () => {
+      await Promise.all(Object.keys(files).map((path) => pull(path)))
+      return null
+    })
+
     l.info("sending initialize")
-    await withTimeout(
+    const init = await withTimeout(
       connection.sendRequest("initialize", {
         rootUri: pathToFileURL(input.root).href,
         processId: input.server.process.pid,
@@ -91,7 +208,7 @@ export namespace LSPClient {
           },
         ],
         initializationOptions: {
-          ...input.server.initialization,
+          ...cfg(input),
         },
         capabilities: {
           window: {
@@ -102,6 +219,9 @@ export namespace LSPClient {
             didChangeWatchedFiles: {
               dynamicRegistration: true,
             },
+            diagnostics: {
+              refreshSupport: true,
+            },
           },
           textDocument: {
             synchronization: {
@@ -110,6 +230,10 @@ export namespace LSPClient {
             },
             publishDiagnostics: {
               versionSupport: true,
+            },
+            diagnostic: {
+              dynamicRegistration: true,
+              relatedDocumentSupport: false,
             },
           },
         },
@@ -127,15 +251,16 @@ export namespace LSPClient {
 
     await connection.sendNotification("initialized", {})
 
+    const diagnostic = Boolean(
+      (init as { capabilities?: { diagnosticProvider?: unknown } }).capabilities?.diagnosticProvider,
+    )
+    codeAction = Boolean((init as { capabilities?: { codeActionProvider?: unknown } }).capabilities?.codeActionProvider)
+
     if (input.server.initialization) {
       await connection.sendNotification("workspace/didChangeConfiguration", {
-        settings: input.server.initialization,
+        settings: cfg(input),
       })
     }
-
-    const files: {
-      [path: string]: number
-    } = {}
 
     const result = {
       root: input.root,
@@ -177,6 +302,7 @@ export namespace LSPClient {
               },
               contentChanges: [{ text }],
             })
+            if (diagnostic) await pull(input.path)
             return
           }
 
@@ -201,6 +327,7 @@ export namespace LSPClient {
             },
           })
           files[input.path] = 0
+          if (diagnostic) await pull(input.path)
           return
         },
       },
@@ -228,7 +355,7 @@ export namespace LSPClient {
               }
             })
           }),
-          3000,
+          10000,
         )
           .catch(() => {})
           .finally(() => {

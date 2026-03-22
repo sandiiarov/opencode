@@ -4,6 +4,7 @@ import { useTheme } from "../context/theme"
 import { useDialog } from "@tui/ui/dialog"
 import { useSync } from "@tui/context/sync"
 import { For, Match, Switch, Show, createMemo } from "solid-js"
+import { lspcolor, lspicon } from "@tui/util/icon"
 
 export type DialogStatusProps = {}
 
@@ -13,7 +14,6 @@ export function DialogStatus() {
   const dialog = useDialog()
 
   const enabledFormatters = createMemo(() => sync.data.formatter.filter((f) => f.enabled))
-
   const plugins = createMemo(() => {
     const list = sync.data.config.plugin ?? []
     const result = list.map((value) => {
@@ -109,6 +109,7 @@ export function DialogStatus() {
                 >
                   •
                 </text>
+                <text fg={lspcolor(item.id)}>{lspicon(item.id)}</text>
                 <text fg={theme.text} wrapMode="word">
                   <b>{item.id}</b> <span style={{ fg: theme.textMuted }}>{item.root}</span>
                 </text>

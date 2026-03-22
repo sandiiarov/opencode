@@ -74,6 +74,7 @@ import { Footer } from "./footer.tsx"
 import { usePromptRef } from "../../context/prompt"
 import { useExit } from "../../context/exit"
 import { Filesystem } from "@/util/filesystem"
+import { lspcolor, lspicon, pathlabel } from "@tui/util/icon"
 import { Global } from "@/global"
 import { PermissionPrompt } from "./permission"
 import { QuestionPrompt } from "./question"
@@ -1849,7 +1850,7 @@ function Write(props: ToolProps<typeof WriteTool>) {
   return (
     <Switch>
       <Match when={props.metadata.diagnostics !== undefined}>
-        <BlockTool title={"# Wrote " + normalizePath(props.input.filePath!)} part={props.part}>
+        <BlockTool title={"# Wrote " + pathlabel(normalizePath(props.input.filePath!))} part={props.part}>
           <line_number fg={theme.textMuted} minWidth={3} paddingRight={1}>
             <code
               conceal={false}
@@ -1864,7 +1865,7 @@ function Write(props: ToolProps<typeof WriteTool>) {
       </Match>
       <Match when={true}>
         <InlineTool icon="←" pending="Preparing write..." complete={props.input.filePath} part={props.part}>
-          Write {normalizePath(props.input.filePath!)}
+          Write {pathlabel(normalizePath(props.input.filePath!))}
         </InlineTool>
       </Match>
     </Switch>
@@ -1874,7 +1875,7 @@ function Write(props: ToolProps<typeof WriteTool>) {
 function Glob(props: ToolProps<typeof GlobTool>) {
   return (
     <InlineTool icon="✱" pending="Finding files..." complete={props.input.pattern} part={props.part}>
-      Glob "{props.input.pattern}" <Show when={props.input.path}>in {normalizePath(props.input.path)} </Show>
+      Glob "{props.input.pattern}" <Show when={props.input.path}>in {pathlabel(normalizePath(props.input.path))} </Show>
       <Show when={props.metadata.count}>
         ({props.metadata.count} {props.metadata.count === 1 ? "match" : "matches"})
       </Show>
@@ -1901,13 +1902,13 @@ function Read(props: ToolProps<typeof ReadTool>) {
         spinner={isRunning()}
         part={props.part}
       >
-        Read {normalizePath(props.input.filePath!)} {input(props.input, ["filePath"])}
+        Read {pathlabel(normalizePath(props.input.filePath!))} {input(props.input, ["filePath"])}
       </InlineTool>
       <For each={loaded()}>
         {(filepath) => (
           <box paddingLeft={3}>
             <text paddingLeft={3} fg={theme.textMuted}>
-              ↳ Loaded {normalizePath(filepath)}
+              ↳ Loaded {pathlabel(normalizePath(filepath))}
             </text>
           </box>
         )}
@@ -1919,7 +1920,7 @@ function Read(props: ToolProps<typeof ReadTool>) {
 function Grep(props: ToolProps<typeof GrepTool>) {
   return (
     <InlineTool icon="✱" pending="Searching content..." complete={props.input.pattern} part={props.part}>
-      Grep "{props.input.pattern}" <Show when={props.input.path}>in {normalizePath(props.input.path)} </Show>
+      Grep "{props.input.pattern}" <Show when={props.input.path}>in {pathlabel(normalizePath(props.input.path))} </Show>
       <Show when={props.metadata.matches}>
         ({props.metadata.matches} {props.metadata.matches === 1 ? "match" : "matches"})
       </Show>
@@ -1936,7 +1937,7 @@ function List(props: ToolProps<typeof ListTool>) {
   })
   return (
     <InlineTool icon="→" pending="Listing directory..." complete={props.input.path !== undefined} part={props.part}>
-      List {dir()}
+      List {pathlabel(dir())}
     </InlineTool>
   )
 }
@@ -2055,7 +2056,7 @@ function Edit(props: ToolProps<typeof EditTool>) {
   return (
     <Switch>
       <Match when={props.metadata.diff !== undefined}>
-        <BlockTool title={"← Edit " + normalizePath(props.input.filePath!)} part={props.part}>
+        <BlockTool title={"← Edit " + pathlabel(normalizePath(props.input.filePath!))} part={props.part}>
           <box paddingLeft={1}>
             <diff
               diff={diffContent()}
@@ -2082,7 +2083,7 @@ function Edit(props: ToolProps<typeof EditTool>) {
       </Match>
       <Match when={true}>
         <InlineTool icon="←" pending="Preparing edit..." complete={props.input.filePath} part={props.part}>
-          Edit {normalizePath(props.input.filePath!)} {input({ replaceAll: props.input.replaceAll })}
+          Edit {pathlabel(normalizePath(props.input.filePath!))} {input({ replaceAll: props.input.replaceAll })}
         </InlineTool>
       </Match>
     </Switch>
@@ -2229,19 +2230,44 @@ function Skill(props: ToolProps<typeof SkillTool>) {
 
 function Diagnostics(props: { diagnostics?: Record<string, Record<string, any>[]>; filePath: string }) {
   const { theme } = useTheme()
-  const errors = createMemo(() => {
+  const items = createMemo(() => {
     const normalized = Filesystem.normalizePath(props.filePath)
     const arr = props.diagnostics?.[normalized] ?? []
-    return arr.filter((x) => x.severity === 1).slice(0, 3)
+    return arr
+      .filter((x) => (x.severity || 1) <= 4)
+      .slice()
+      .sort((a, b) => {
+        const left = a.severity || 1
+        const right = b.severity || 1
+        if (left !== right) return left - right
+        if (a.range.start.line !== b.range.start.line) return a.range.start.line - b.range.start.line
+        return a.range.start.character - b.range.start.character
+      })
   })
 
+  const color = (severity?: number) => {
+    if (severity === 2) return theme.warning
+    if (severity === 3) return theme.info
+    if (severity === 4) return theme.info
+    return theme.error
+  }
+
+  const diagnosticLabel = (severity?: number) => {
+    if (severity === 2) return ""
+    if (severity === 3) return ""
+    if (severity === 4) return ""
+    return ""
+  }
+
   return (
-    <Show when={errors().length}>
+    <Show when={items().length}>
       <box>
-        <For each={errors()}>
+        <For each={items()}>
           {(diagnostic) => (
-            <text fg={theme.error}>
-              Error [{diagnostic.range.start.line + 1}:{diagnostic.range.start.character + 1}] {diagnostic.message}
+            <text fg={color(diagnostic.severity)}>
+              <span style={{ fg: lspcolor(diagnostic.source) }}>{lspicon(diagnostic.source)}</span>{" "}
+              {diagnosticLabel(diagnostic.severity)} [{diagnostic.range.start.line + 1}:
+              {diagnostic.range.start.character + 1}] {diagnostic.message}
             </text>
           )}
         </For>

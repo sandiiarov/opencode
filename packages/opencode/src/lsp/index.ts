@@ -467,19 +467,41 @@ export namespace LSP {
   }
 
   export namespace Diagnostic {
-    export function pretty(diagnostic: LSPClient.Diagnostic) {
-      const severityMap = {
+    export function sort(arr: LSPClient.Diagnostic[]) {
+      return arr.slice().sort((a, b) => {
+        const left = a.severity || 1
+        const right = b.severity || 1
+        if (left !== right) return left - right
+        if (a.range.start.line !== b.range.start.line) return a.range.start.line - b.range.start.line
+        return a.range.start.character - b.range.start.character
+      })
+    }
+
+    export function visible(diagnostic: LSPClient.Diagnostic) {
+      return (diagnostic.severity || 1) <= 4
+    }
+
+    export function label(diagnostic: LSPClient.Diagnostic) {
+      const map = {
         1: "ERROR",
-        2: "WARN",
+        2: "WARNING",
         3: "INFO",
         4: "HINT",
       }
 
-      const severity = severityMap[diagnostic.severity || 1]
+      return map[diagnostic.severity || 1]
+    }
+
+    export function suggestions(diagnostic: LSPClient.Diagnostic) {
+      if (!diagnostic.suggestions || diagnostic.suggestions.length === 0) return ""
+      return ` Suggest: ${diagnostic.suggestions.join("; ")}`
+    }
+
+    export function pretty(diagnostic: LSPClient.Diagnostic) {
       const line = diagnostic.range.start.line + 1
       const col = diagnostic.range.start.character + 1
 
-      return `${severity} [${line}:${col}] ${diagnostic.message}`
+      return `${label(diagnostic)} [${line}:${col}] ${diagnostic.message}${suggestions(diagnostic)}`
     }
   }
 }
