@@ -179,15 +179,14 @@ describeWatcher("FileWatcher", () => {
     // Now write a file — no watcher should be listening
     await Instance.provide({
       directory: tmp.path,
-      fn: async () => {
-        await Effect.runPromise(
+      fn: () =>
+        Effect.runPromise(
           noUpdate(
             tmp.path,
             (e) => e.file === file,
             Effect.promise(() => fs.writeFile(file, "gone")),
           ),
-        )
-      },
+        ),
     })
   })
 
