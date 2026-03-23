@@ -69,7 +69,7 @@ export function DialogStatus() {
                     )[item.status],
                   }}
                 >
-                  •
+                  {item.status === "connected" ? "" : ""}
                 </text>
                 <text fg={theme.text} wrapMode="word">
                   <b>{key}</b>{" "}
@@ -107,7 +107,7 @@ export function DialogStatus() {
                     }[item.status],
                   }}
                 >
-                  •
+                  {item.status === "connected" ? "" : ""}
                 </text>
                 <text fg={lspcolor(item.id)}>{lspicon(item.id)}</text>
                 <text fg={theme.text} wrapMode="word">
@@ -130,7 +130,7 @@ export function DialogStatus() {
                     fg: theme.success,
                   }}
                 >
-                  •
+                  
                 </text>
                 <text wrapMode="word" fg={theme.text}>
                   <b>{item.name}</b>
@@ -152,7 +152,7 @@ export function DialogStatus() {
                     fg: theme.success,
                   }}
                 >
-                  •
+                  
                 </text>
                 <text wrapMode="word" fg={theme.text}>
                   <b>{item.name}</b>

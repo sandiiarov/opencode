@@ -132,7 +132,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
                   onMouseDown={() => mcpEntries().length > 2 && setExpanded("mcp", !expanded.mcp)}
                 >
                   <Show when={mcpEntries().length > 2}>
-                    <text fg={theme.text}>{expanded.mcp ? "▼" : "▶"}</text>
+                    <text fg={theme.text}>{expanded.mcp ? "" : ""}</text>
                   </Show>
                   <text fg={theme.text}>
                     <b>MCP</b>
@@ -163,7 +163,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
                             )[item.status],
                           }}
                         >
-                          •
+                          {item.status === "connected" ? "" : ""}
                         </text>
                         <text fg={theme.text} wrapMode="word">
                           {key}{" "}
@@ -192,7 +192,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
                 onMouseDown={() => sync.data.lsp.length > 2 && setExpanded("lsp", !expanded.lsp)}
               >
                 <Show when={sync.data.lsp.length > 2}>
-                  <text fg={theme.text}>{expanded.lsp ? "▼" : "▶"}</text>
+                  <text fg={theme.text}>{expanded.lsp ? "" : ""}</text>
                 </Show>
                 <text fg={theme.text}>
                   <b>LSP</b>
@@ -218,7 +218,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
                           }[item.status],
                         }}
                       >
-                        •
+                        {item.status === "connected" ? "" : ""}
                       </text>
                       <text fg={lspcolor(item.id)}>{lspicon(item.id)}</text>
                       <text fg={theme.textMuted}>
@@ -237,7 +237,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
                   onMouseDown={() => todo().length > 2 && setExpanded("todo", !expanded.todo)}
                 >
                   <Show when={todo().length > 2}>
-                    <text fg={theme.text}>{expanded.todo ? "▼" : "▶"}</text>
+                    <text fg={theme.text}>{expanded.todo ? "" : ""}</text>
                   </Show>
                   <text fg={theme.text}>
                     <b>Todo</b>
@@ -258,7 +258,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
                   onMouseDown={() => diff().length > 2 && setExpanded("diff", !expanded.diff)}
                 >
                   <Show when={diff().length > 2}>
-                    <text fg={theme.text}>{expanded.diff ? "▼" : "▶"}</text>
+                    <text fg={theme.text}>{expanded.diff ? "" : ""}</text>
                   </Show>
                   <text fg={theme.text}>
                     <b>Modified Files</b>
@@ -329,7 +329,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
             <span style={{ fg: theme.text }}>{directory().split("/").at(-1)}</span>
           </text>
           <text fg={theme.textMuted}>
-            <span style={{ fg: theme.success }}>•</span> <b>Open</b>
+            <span style={{ fg: theme.success }}></span>
             <span style={{ fg: theme.text }}>
               <b>Code</b>
             </span>{" "}
