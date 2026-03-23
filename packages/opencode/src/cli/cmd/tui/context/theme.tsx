@@ -6,6 +6,7 @@ import { Glob } from "../../../../util/glob"
 import aura from "./theme/aura.json" with { type: "json" }
 import ayu from "./theme/ayu.json" with { type: "json" }
 import catppuccin from "./theme/catppuccin.json" with { type: "json" }
+import catppuccinTransparent from "./theme/catppuccin-transparent.json" with { type: "json" }
 import catppuccinFrappe from "./theme/catppuccin-frappe.json" with { type: "json" }
 import catppuccinMacchiato from "./theme/catppuccin-macchiato.json" with { type: "json" }
 import cobalt2 from "./theme/cobalt2.json" with { type: "json" }
@@ -142,6 +143,7 @@ export const DEFAULT_THEMES: Record<string, ThemeJson> = {
   aura,
   ayu,
   catppuccin,
+  ["catppuccin-transparent"]: catppuccinTransparent,
   ["catppuccin-frappe"]: catppuccinFrappe,
   ["catppuccin-macchiato"]: catppuccinMacchiato,
   cobalt2,
@@ -176,12 +178,24 @@ export const DEFAULT_THEMES: Record<string, ThemeJson> = {
 
 function resolveTheme(theme: ThemeJson, mode: "dark" | "light") {
   const defs = theme.defs ?? {}
+  function hex(c: HexColor): RGBA {
+    if (/^#[0-9a-fA-F]{8}$/.test(c)) {
+      return RGBA.fromInts(
+        parseInt(c.slice(1, 3), 16),
+        parseInt(c.slice(3, 5), 16),
+        parseInt(c.slice(5, 7), 16),
+        parseInt(c.slice(7, 9), 16),
+      )
+    }
+    return RGBA.fromHex(c)
+  }
+
   function resolveColor(c: ColorValue): RGBA {
     if (c instanceof RGBA) return c
     if (typeof c === "string") {
       if (c === "transparent" || c === "none") return RGBA.fromInts(0, 0, 0, 0)
 
-      if (c.startsWith("#")) return RGBA.fromHex(c)
+      if (c.startsWith("#")) return hex(c as HexColor)
 
       if (defs[c] != null) {
         return resolveColor(defs[c])

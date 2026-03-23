@@ -1390,10 +1390,7 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
             <text marginTop={1}>
               <span
                 style={{
-                  fg:
-                    props.message.error?.name === "MessageAbortedError"
-                      ? theme.textMuted
-                      : local.agent.color(props.message.agent),
+                  fg: theme.textMuted,
                 }}
               >
                 ▣{" "}
@@ -1430,15 +1427,7 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
   })
   return (
     <Show when={content() && ctx.showThinking()}>
-      <box
-        id={"text-" + props.part.id}
-        paddingLeft={2}
-        marginTop={1}
-        flexDirection="column"
-        border={["left"]}
-        customBorderChars={SplitBorder.customBorderChars}
-        borderColor={theme.backgroundElement}
-      >
+      <box id={"text-" + props.part.id} paddingLeft={3} marginTop={1} flexDirection="column">
         <code
           filetype="markdown"
           drawUnstyledText={false}
@@ -1663,6 +1652,7 @@ function InlineTool(props: {
     if (props.complete) return theme.textMuted
     return theme.text
   })
+  const icon = createMemo(() => props.iconColor ?? theme.success)
 
   const error = createMemo(() => (props.part.state.status === "error" ? props.part.state.error : undefined))
 
@@ -1676,8 +1666,11 @@ function InlineTool(props: {
 
   return (
     <box
+      border={["left"]}
       marginTop={margin()}
-      paddingLeft={3}
+      paddingLeft={2}
+      customBorderChars={SplitBorder.customBorderChars}
+      borderColor={theme.diffHunkHeader}
       onMouseOver={() => props.onClick && setHover(true)}
       onMouseOut={() => setHover(false)}
       onMouseUp={() => {
@@ -1714,7 +1707,7 @@ function InlineTool(props: {
         <Match when={true}>
           <text paddingLeft={3} fg={fg()} attributes={denied() ? TextAttributes.STRIKETHROUGH : undefined}>
             <Show fallback={<>~ {props.pending}</>} when={props.complete}>
-              <span style={{ fg: props.iconColor }}>{props.icon}</span> {props.children}
+              <span style={{ fg: icon() }}>{props.icon}</span> {props.children}
             </Show>
           </text>
         </Match>
@@ -1747,7 +1740,7 @@ function BlockTool(props: {
       gap={1}
       backgroundColor={hover() ? theme.backgroundMenu : theme.backgroundPanel}
       customBorderChars={SplitBorder.customBorderChars}
-      borderColor={theme.background}
+      borderColor={theme.diffHunkHeader}
       onMouseOver={() => props.onClick && setHover(true)}
       onMouseOut={() => setHover(false)}
       onMouseUp={() => {
@@ -2057,7 +2050,7 @@ function Edit(props: ToolProps<typeof EditTool>) {
     <Switch>
       <Match when={props.metadata.diff !== undefined}>
         <BlockTool title={"← Edit " + pathlabel(normalizePath(props.input.filePath!))} part={props.part}>
-          <box paddingLeft={1}>
+          <box backgroundColor={theme.diffContextBg}>
             <diff
               diff={diffContent()}
               view={view()}
@@ -2104,7 +2097,7 @@ function ApplyPatch(props: ToolProps<typeof ApplyPatchTool>) {
 
   function Diff(p: { diff: string; filePath: string }) {
     return (
-      <box paddingLeft={1}>
+      <box backgroundColor={theme.diffContextBg}>
         <diff
           diff={p.diff}
           view={view()}
@@ -2172,7 +2165,7 @@ function TodoWrite(props: ToolProps<typeof TodoWriteTool>) {
         <BlockTool title="# Todos" part={props.part}>
           <box>
             <For each={props.input.todos ?? []}>
-              {(todo) => <TodoItem status={todo.status} content={todo.content} />}
+              {(todo) => <TodoItem status={todo.status} content={todo.content} tone="tool" />}
             </For>
           </box>
         </BlockTool>
