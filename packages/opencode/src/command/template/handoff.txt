@@ -1,0 +1,177 @@
+Use this command when the user wants a clean handoff summary they can paste into a new OpenCode session.
+
+---
+
+## Purpose
+
+Use `/handoff` when:
+- The current session context is getting too long and quality is degrading
+- The user wants to start fresh while preserving essential context from this session
+- The context window is approaching capacity
+
+This creates a detailed context summary that can be used to continue work in a new session.
+
+---
+
+## Phase 0: Validate Request
+
+Before proceeding, confirm:
+- There is meaningful work or context in this session to preserve
+- The user wants to create a handoff summary, not just ask what it does
+
+If the session is nearly empty or has no meaningful context, say there is nothing substantial to hand off.
+
+---
+
+## Phase 1: Gather Programmatic Context
+
+Use the current conversation context in this session, then gather concrete data with these tools:
+
+1. `todoread()` - current task progress
+2. `bash` with `git diff --stat HEAD~10..HEAD` - recent file changes
+3. `bash` with `git status --porcelain` - uncommitted changes
+
+Suggested execution order:
+
+```txt
+todoread()
+bash("git diff --stat HEAD~10..HEAD")
+bash("git status --porcelain")
+```
+
+Analyze the gathered context to understand:
+- What the user asked for, using exact wording where required
+- What work was completed
+- What tasks remain incomplete, including todo state
+- What decisions were made
+- What files were modified or discussed
+- What patterns, constraints, or preferences were established
+
+If a git command fails because there is not enough history or the directory is not a git repository, continue with the rest of the available context.
+
+---
+
+## Phase 2: Extract Context
+
+Write the context summary from first person perspective, for example "I did..." and "I told you...".
+
+Focus on:
+- Capabilities and behavior, not file-by-file implementation details
+- What matters for continuing the work
+- Avoiding excessive implementation details unless they are critical
+- `USER REQUESTS (AS-IS)` must be verbatim and not paraphrased
+- `EXPLICIT CONSTRAINTS` must be verbatim only and must not be invented
+
+Questions to consider:
+- What did I just do or implement?
+- What instructions did I already give that are still relevant?
+- What files did I identify as important?
+- Did I provide a plan or spec that should be preserved?
+- What important technical details did I discover?
+- What caveats, limitations, or open questions remain?
+
+---
+
+## Phase 3: Format Output
+
+Generate the handoff summary using this exact structure:
+
+```txt
+HANDOFF CONTEXT
+===============
+
+USER REQUESTS (AS-IS)
+---------------------
+- [Exact verbatim user requests - NOT paraphrased]
+
+GOAL
+----
+[One sentence describing what should be done next]
+
+WORK COMPLETED
+--------------
+- [First person bullet points of what was done]
+- [Include specific file paths when relevant]
+- [Note key implementation decisions]
+
+CURRENT STATE
+-------------
+- [Current state of the codebase or task]
+- [Build/test status if applicable]
+- [Any environment or configuration state]
+
+PENDING TASKS
+-------------
+- [Tasks that were planned but not completed]
+- [Next logical steps to take]
+- [Any blockers or issues encountered]
+- [Include current todo state from todoread()]
+
+KEY FILES
+---------
+- [path/to/file1] - [brief role description]
+- [path/to/file2] - [brief role description]
+(Maximum 10 files, prioritized by importance)
+- (Include files from git diff/stat and git status when relevant)
+
+IMPORTANT DECISIONS
+-------------------
+- [Technical decisions that were made and why]
+- [Trade-offs that were considered]
+- [Patterns or conventions established]
+
+EXPLICIT CONSTRAINTS
+--------------------
+- [Verbatim constraints only - from user or existing AGENTS.md]
+- If none, write: None
+
+CONTEXT FOR CONTINUATION
+------------------------
+- [What the next session needs to know to continue]
+- [Warnings or gotchas to be aware of]
+- [References to documentation if relevant]
+```
+
+Rules for the summary:
+- Plain text with bullets
+- No markdown headers with `#` inside the summary body
+- No bold, italic, or code fences within the summary content
+- Use workspace-relative paths for files under `/Users/alexsandiiarov/Documents/opencode`
+- Keep it focused and include only what matters for continuation
+- Pick an appropriate length based on complexity
+- `USER REQUESTS (AS-IS)` and `EXPLICIT CONSTRAINTS` must be verbatim only
+
+---
+
+## Phase 4: Provide Instructions
+
+After generating the summary, tell the user exactly this:
+
+```txt
+---
+
+TO CONTINUE IN A NEW SESSION:
+
+1. Press 'n' in OpenCode TUI to open a new session, or run 'opencode' in a new terminal
+2. Paste the HANDOFF CONTEXT above as your first message
+3. Add your request: "Continue from the handoff context above. [Your next task]"
+
+The new session will have all context needed to continue seamlessly.
+```
+
+---
+
+## Important Constraints
+
+- Do not attempt to programmatically create a new session
+- Do provide a self-contained summary that works without access to this session
+- Do include workspace-relative file paths
+- Do not include sensitive information such as API keys, credentials, or secrets
+- Do not exceed 10 files in the `KEY FILES` section
+- Do keep the `GOAL` section to a single sentence or short paragraph
+
+---
+
+## Execute Now
+
+Begin by gathering context, then synthesize the handoff summary.

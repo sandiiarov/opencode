@@ -295,7 +295,7 @@ export const SessionRoutes = lazy(() =>
       describeRoute({
         summary: "Initialize session",
         description:
-          "Analyze the current application and create an AGENTS.md file with project-specific agent configurations.",
+          "Analyze the current application and create or improve a concise, repo-specific AGENTS.md for coding agents.",
         operationId: "session.init",
         responses: {
           200: {

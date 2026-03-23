@@ -1,10 +1,116 @@
-Please analyze this codebase and create an AGENTS.md file containing:
-1. Build/lint/test commands - especially for running a single test
-2. Code style guidelines including imports, formatting, types, naming conventions, error handling, etc.
+Create or improve `AGENTS.md` for this codebase.
 
-The file you create will be given to agentic coding agents (such as yourself) that operate in this repository. Make it about 150 lines long.
-If there are Cursor rules (in .cursor/rules/ or .cursorrules) or Copilot rules (in .github/copilot-instructions.md), make sure to include them.
+Target file: `AGENTS.md` in `${path}`.
 
-If there's already an AGENTS.md, improve it if it's located in ${path}
+Your job is to produce an agent instruction file that is actually useful for coding agents working in this repository.
+
+---
+
+## Goal
+
+- If `${path}/AGENTS.md` exists, improve it in place.
+- Otherwise, create a new `${path}/AGENTS.md`.
+- Make it specific to this repo, concise, and easy for agents to follow.
+
+---
+
+## First Principles
+
+- Minimal and targeted beats comprehensive and generic.
+- Include only guidance that is both non-obvious from code inspection and likely to prevent mistakes.
+- Do not turn `AGENTS.md` into a README, architecture tour, or dependency dump.
+- Prefer exact commands, short bullets, and verifiable rules.
+- Prefer pointers to files or examples over copying large amounts of implementation detail.
+
+---
+
+## Research Before Writing
+
+Inspect the repository before you edit `AGENTS.md`.
+
+At minimum, check:
+- `package.json` files and workspace tooling for build, test, lint, typecheck, dev, and single-test commands
+- existing `AGENTS.md` files near `${path}`
+- `.cursor/rules/`, `.cursorrules`, and `.github/copilot-instructions.md` if present
+- repo config that reveals non-obvious workflows, boundaries, codegen, migrations, or package-manager requirements
+
+If the repo is a monorepo, focus on instructions that are valid from `${path}` and clearly call out package-specific commands when needed.
+
+---
+
+## What To Include
+
+Prioritize sections like these when they are supported by the repo:
+
+1. `Commands`
+   - install, dev, build, lint, typecheck, test
+   - exact single-test command if discoverable
+   - codegen or migration commands if they are required in normal work
+
+2. `Testing`
+   - test framework only if it matters
+   - where tests should be run from if non-obvious
+   - any required verification order before finishing work
+
+3. `Code Style`
+   - only non-obvious conventions or patterns agents often get wrong
+   - include short good examples when a rule is subtle
+
+4. `Project Structure`
+   - only if the layout is non-standard or package-scoped behavior matters
+
+5. `Boundaries`
+   - use `Always Do`, `Ask First`, and `Never Do` when the repo supports clear boundaries
+
+6. `Common Pitfalls` or `Legacy Technologies`
+   - only for real gotchas or deprecated approaches that agents should avoid
+
+---
+
+## What To Exclude
+
+- generic best practices
+- obvious language conventions
+- long architecture explanations
+- dependency inventories
+- file-by-file summaries
+- anything you cannot verify from the repo
+- stale or speculative rules
+
+Do not add filler just to make the file longer.
+
+---
+
+## Length And Style
+
+- Target roughly 60-200 lines.
+- Use Markdown headings and short bullets.
+- Put commands near the top.
+- Write in telegraph style.
+- Use concrete, copy-pasteable commands.
+- Use absolute instructions like `Always`, `Never`, and `Ask First` instead of vague wording.
+
+---
+
+## Existing File Strategy
+
+If `${path}/AGENTS.md` already exists:
+- preserve useful repo-specific guidance
+- remove or tighten generic filler
+- reorganize for clarity if needed
+- keep good existing instructions unless they conflict with verified repo behavior
+
+---
+
+## Deliverable Quality Bar
+
+Before finishing, check that the final `AGENTS.md`:
+- reflects the actual commands and workflows in this repo
+- mentions Cursor or Copilot rules if they exist and matter
+- helps an agent avoid likely mistakes
+- stays concise and readable
+- avoids invented guidance
+
+User note:
 
 $ARGUMENTS
