@@ -73,7 +73,7 @@ import { Footer } from "./footer.tsx"
 import { usePromptRef } from "../../context/prompt"
 import { useExit } from "../../context/exit"
 import { Filesystem } from "@/util/filesystem"
-import { lspcolor, lspicon, pathlabel } from "@tui/util/icon"
+import { langcolor, lspcolor, lspicon, pathicon } from "@tui/util/icon"
 import { Global } from "@/global"
 import { PermissionPrompt } from "./permission"
 import { QuestionPrompt } from "./question"
@@ -82,6 +82,12 @@ import { formatTranscript } from "../../util/transcript"
 import { UI } from "@/cli/ui.ts"
 import { useTuiConfig } from "../../context/tui-config"
 
+const TOOL_MARK = ""
+const BUILD_MARK = "󰒔"
+const SEARCH_MARK = "󰎃"
+const READ_MARK = "󰧚"
+const WRITE_MARK = "󰧘"
+const SEP_MARK = ""
 addDefaultParsers(parsers.parsers)
 
 class CustomSpeedScroll implements ScrollAcceleration {
@@ -1392,15 +1398,21 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
                   fg: theme.textMuted,
                 }}
               >
-                ▣{" "}
+                {props.message.mode === "build" ? BUILD_MARK : TOOL_MARK}
               </span>{" "}
               <span style={{ fg: theme.text }}>{Locale.titlecase(props.message.mode)}</span>
-              <span style={{ fg: theme.textMuted }}> · {props.message.modelID}</span>
+              <span style={{ fg: theme.textMuted }}>
+                {" "}
+                {SEP_MARK} {props.message.modelID}
+              </span>
               <Show when={duration()}>
-                <span style={{ fg: theme.textMuted }}> · {Locale.duration(duration())}</span>
+                <span style={{ fg: theme.textMuted }}>
+                  {" "}
+                  {SEP_MARK} {Locale.duration(duration())}
+                </span>
               </Show>
               <Show when={props.message.error?.name === "MessageAbortedError"}>
-                <span style={{ fg: theme.textMuted }}> · interrupted</span>
+                <span style={{ fg: theme.textMuted }}> {SEP_MARK} interrupted</span>
               </Show>
             </text>
           </box>
@@ -1628,7 +1640,8 @@ function GenericTool(props: ToolProps<any>) {
       }
     >
       <BlockTool
-        title={`# ${props.tool} ${input(props.input)}`}
+        icon={TOOL_MARK}
+        title={`${props.tool} ${input(props.input)}`}
         part={props.part}
         onClick={overflow() ? () => setExpanded((prev) => !prev) : undefined}
       >
@@ -1651,6 +1664,14 @@ function ToolTitle(props: { fallback: string; when: any; icon: string; children:
         <span style={{ bold: true }}>{props.icon}</span> {props.children}
       </Show>
     </text>
+  )
+}
+
+function FileLabel(props: { path?: string }) {
+  return (
+    <>
+      <span style={{ fg: langcolor(props.path) }}>{pathicon(props.path)}</span> {props.path}
+    </>
   )
 }
 
@@ -1683,7 +1704,7 @@ function InlineTool(props: {
     if (props.complete) return theme.textMuted
     return theme.text
   })
-  const icon = createMemo(() => props.iconColor ?? theme.success)
+  const icon = createMemo(() => props.iconColor ?? tint.tool)
 
   const error = createMemo(() => (props.part.state.status === "error" ? props.part.state.error : undefined))
 
@@ -1751,7 +1772,9 @@ function InlineTool(props: {
 }
 
 function BlockTool(props: {
-  title: string
+  title: JSX.Element | string
+  text?: string
+  icon?: string
   children: JSX.Element
   onClick?: () => void
   part?: ToolPart
@@ -1783,11 +1806,14 @@ function BlockTool(props: {
         when={props.spinner}
         fallback={
           <text paddingLeft={3} fg={theme.textMuted}>
+            <Show when={props.icon}>
+              <span style={{ fg: tint.tool }}>{props.icon}</span>{" "}
+            </Show>
             {props.title}
           </text>
         }
       >
-        <Spinner color={theme.textMuted}>{props.title.replace(/^# /, "")}</Spinner>
+        <Spinner color={theme.textMuted}>{props.text ?? (typeof props.title === "string" ? props.title : "")}</Spinner>
       </Show>
       {props.children}
       <Show when={error()}>
@@ -1830,15 +1856,16 @@ function Bash(props: ToolProps<typeof BashTool>) {
   const title = createMemo(() => {
     const desc = props.input.description ?? "Shell"
     const wd = workdirDisplay()
-    if (!wd) return `# ${desc}`
-    if (desc.includes(wd)) return `# ${desc}`
-    return `# ${desc} in ${wd}`
+    if (!wd) return desc
+    if (desc.includes(wd)) return desc
+    return `${desc} in ${wd}`
   })
 
   return (
     <Switch>
       <Match when={props.metadata.output !== undefined}>
         <BlockTool
+          icon={BUILD_MARK}
           title={title()}
           part={props.part}
           spinner={isRunning()}
@@ -1874,7 +1901,16 @@ function Write(props: ToolProps<typeof WriteTool>) {
   return (
     <Switch>
       <Match when={props.metadata.diagnostics !== undefined}>
-        <BlockTool title={"# Wrote " + pathlabel(normalizePath(props.input.filePath!))} part={props.part}>
+        <BlockTool
+          icon={TOOL_MARK}
+          title={
+            <>
+              Wrote <FileLabel path={normalizePath(props.input.filePath!)} />
+            </>
+          }
+          text={"Wrote " + normalizePath(props.input.filePath!)}
+          part={props.part}
+        >
           <line_number fg={theme.textMuted} minWidth={3} paddingRight={1}>
             <code
               conceal={false}
@@ -1888,8 +1924,8 @@ function Write(props: ToolProps<typeof WriteTool>) {
         </BlockTool>
       </Match>
       <Match when={true}>
-        <InlineTool icon="←" pending="Preparing write..." complete={props.input.filePath} part={props.part}>
-          Write {pathlabel(normalizePath(props.input.filePath!))}
+        <InlineTool icon={WRITE_MARK} pending="Preparing write..." complete={props.input.filePath} part={props.part}>
+          Write <FileLabel path={normalizePath(props.input.filePath!)} />
         </InlineTool>
       </Match>
     </Switch>
@@ -1898,8 +1934,11 @@ function Write(props: ToolProps<typeof WriteTool>) {
 
 function Glob(props: ToolProps<typeof GlobTool>) {
   return (
-    <InlineTool icon="✱" pending="Finding files..." complete={props.input.pattern} part={props.part}>
-      Glob "{props.input.pattern}" <Show when={props.input.path}>in {pathlabel(normalizePath(props.input.path))} </Show>
+    <InlineTool icon={SEARCH_MARK} pending="Finding files..." complete={props.input.pattern} part={props.part}>
+      Glob "{props.input.pattern}"{" "}
+      <Show when={props.input.path}>
+        in <FileLabel path={normalizePath(props.input.path)} />{" "}
+      </Show>
       <Show when={props.metadata.count}>
         ({props.metadata.count} {props.metadata.count === 1 ? "match" : "matches"})
       </Show>
@@ -1920,19 +1959,19 @@ function Read(props: ToolProps<typeof ReadTool>) {
   return (
     <>
       <InlineTool
-        icon="→"
+        icon={READ_MARK}
         pending="Reading file..."
         complete={props.input.filePath}
         spinner={isRunning()}
         part={props.part}
       >
-        Read {pathlabel(normalizePath(props.input.filePath!))} {input(props.input, ["filePath"])}
+        Read <FileLabel path={normalizePath(props.input.filePath!)} /> {input(props.input, ["filePath"])}
       </InlineTool>
       <For each={loaded()}>
         {(filepath) => (
           <box paddingLeft={3}>
             <text paddingLeft={3} fg={theme.textMuted}>
-              ↳ Loaded {pathlabel(normalizePath(filepath))}
+              ↳ Loaded <FileLabel path={normalizePath(filepath)} />
             </text>
           </box>
         )}
@@ -1943,8 +1982,11 @@ function Read(props: ToolProps<typeof ReadTool>) {
 
 function Grep(props: ToolProps<typeof GrepTool>) {
   return (
-    <InlineTool icon="✱" pending="Searching content..." complete={props.input.pattern} part={props.part}>
-      Grep "{props.input.pattern}" <Show when={props.input.path}>in {pathlabel(normalizePath(props.input.path))} </Show>
+    <InlineTool icon={SEARCH_MARK} pending="Searching content..." complete={props.input.pattern} part={props.part}>
+      Grep "{props.input.pattern}"{" "}
+      <Show when={props.input.path}>
+        in <FileLabel path={normalizePath(props.input.path)} />{" "}
+      </Show>
       <Show when={props.metadata.matches}>
         ({props.metadata.matches} {props.metadata.matches === 1 ? "match" : "matches"})
       </Show>
@@ -1960,8 +2002,13 @@ function List(props: ToolProps<typeof ListTool>) {
     return ""
   })
   return (
-    <InlineTool icon="→" pending="Listing directory..." complete={props.input.path !== undefined} part={props.part}>
-      List {pathlabel(dir())}
+    <InlineTool
+      icon={READ_MARK}
+      pending="Listing directory..."
+      complete={props.input.path !== undefined}
+      part={props.part}
+    >
+      List <FileLabel path={dir()} />
     </InlineTool>
   )
 }
@@ -2080,7 +2127,16 @@ function Edit(props: ToolProps<typeof EditTool>) {
   return (
     <Switch>
       <Match when={props.metadata.diff !== undefined}>
-        <BlockTool title={"← Edit " + pathlabel(normalizePath(props.input.filePath!))} part={props.part}>
+        <BlockTool
+          icon={WRITE_MARK}
+          title={
+            <>
+              Edit <FileLabel path={normalizePath(props.input.filePath!)} />
+            </>
+          }
+          text={"Edit " + normalizePath(props.input.filePath!)}
+          part={props.part}
+        >
           <box backgroundColor={theme.diffContextBg}>
             <diff
               diff={diffContent()}
@@ -2106,8 +2162,8 @@ function Edit(props: ToolProps<typeof EditTool>) {
         </BlockTool>
       </Match>
       <Match when={true}>
-        <InlineTool icon="←" pending="Preparing edit..." complete={props.input.filePath} part={props.part}>
-          Edit {pathlabel(normalizePath(props.input.filePath!))}
+        <InlineTool icon={WRITE_MARK} pending="Preparing edit..." complete={props.input.filePath} part={props.part}>
+          Edit <FileLabel path={normalizePath(props.input.filePath!)} />
         </InlineTool>
       </Match>
     </Switch>
@@ -2161,7 +2217,7 @@ function Question(props: ToolProps<typeof QuestionTool>) {
         </BlockTool>
       </Match>
       <Match when={true}>
-        <InlineTool icon="→" pending="Asking questions..." complete={count()} part={props.part}>
+        <InlineTool icon={READ_MARK} pending="Asking questions..." complete={count()} part={props.part}>
           Asked {count()} question{count() !== 1 ? "s" : ""}
         </InlineTool>
       </Match>
@@ -2171,7 +2227,7 @@ function Question(props: ToolProps<typeof QuestionTool>) {
 
 function Skill(props: ToolProps<typeof SkillTool>) {
   return (
-    <InlineTool icon="→" pending="Loading skill..." complete={props.input.name} part={props.part}>
+    <InlineTool icon={READ_MARK} pending="Loading skill..." complete={props.input.name} part={props.part}>
       Skill "{props.input.name}"
     </InlineTool>
   )

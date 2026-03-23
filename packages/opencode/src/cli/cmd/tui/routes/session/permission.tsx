@@ -16,7 +16,10 @@ import { Locale } from "@/util/locale"
 import { Global } from "@/global"
 import { useDialog } from "../../ui/dialog"
 import { useTuiConfig } from "../../context/tui-config"
-
+const TOOL_MARK = ""
+const SEARCH_MARK = "󰎃"
+const READ_MARK = "󰧚"
+const WRITE_MARK = "󰧘"
 type PermissionStage = "permission" | "always" | "reject"
 
 function normalizePath(input?: string) {
@@ -212,7 +215,7 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
               const raw = props.request.metadata?.filepath
               const filepath = typeof raw === "string" ? raw : ""
               return {
-                icon: "→",
+                icon: WRITE_MARK,
                 title: `Edit ${normalizePath(filepath)}`,
                 body: <EditBody request={props.request} />,
               }
@@ -222,7 +225,7 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
               const raw = data.filePath
               const filePath = typeof raw === "string" ? raw : ""
               return {
-                icon: "→",
+                icon: READ_MARK,
                 title: `Read ${normalizePath(filePath)}`,
                 body: (
                   <Show when={filePath}>
@@ -237,7 +240,7 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
             if (permission === "glob") {
               const pattern = typeof data.pattern === "string" ? data.pattern : ""
               return {
-                icon: "✱",
+                icon: SEARCH_MARK,
                 title: `Glob "${pattern}"`,
                 body: (
                   <Show when={pattern}>
@@ -252,7 +255,7 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
             if (permission === "grep") {
               const pattern = typeof data.pattern === "string" ? data.pattern : ""
               return {
-                icon: "✱",
+                icon: SEARCH_MARK,
                 title: `Grep "${pattern}"`,
                 body: (
                   <Show when={pattern}>
@@ -268,7 +271,7 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
               const raw = data.path
               const dir = typeof raw === "string" ? raw : ""
               return {
-                icon: "→",
+                icon: READ_MARK,
                 title: `List ${normalizePath(dir)}`,
                 body: (
                   <Show when={dir}>
@@ -285,7 +288,7 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
                 typeof data.description === "string" && data.description ? data.description : "Shell command"
               const command = typeof data.command === "string" ? data.command : ""
               return {
-                icon: "#",
+                icon: TOOL_MARK,
                 title,
                 body: (
                   <Show when={command}>
@@ -301,7 +304,7 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
               const type = typeof data.subagent_type === "string" ? data.subagent_type : "Unknown"
               const desc = typeof data.description === "string" ? data.description : ""
               return {
-                icon: "#",
+                icon: TOOL_MARK,
                 title: `${Locale.titlecase(type)} Task`,
                 body: (
                   <Show when={desc}>
@@ -371,7 +374,7 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
               const patterns = (props.request.patterns ?? []).filter((p): p is string => typeof p === "string")
 
               return {
-                icon: "←",
+                icon: WRITE_MARK,
                 title: `Access external directory ${dir}`,
                 body: (
                   <Show when={patterns.length > 0}>
