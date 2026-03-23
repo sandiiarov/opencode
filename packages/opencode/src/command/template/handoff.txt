@@ -1,15 +1,4 @@
-Use this command when the user wants a clean handoff summary they can paste into a new OpenCode session.
-
----
-
-## Purpose
-
-Use `/handoff` when:
-- The current session context is getting too long and quality is degrading
-- The user wants to start fresh while preserving essential context from this session
-- The context window is approaching capacity
-
-This creates a detailed context summary that can be used to continue work in a new session.
+Create a detailed context summary that can be used to continue work in a new session.
 
 ---
 
