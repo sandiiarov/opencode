@@ -83,7 +83,7 @@ import { UI } from "@/cli/ui.ts"
 import { useTuiConfig } from "../../context/tui-config"
 
 const TOOL_MARK = ""
-const BUILD_MARK = "󰒔"
+const BUILD_MARK = ""
 const SEARCH_MARK = "󰎃"
 const READ_MARK = "󰧚"
 const WRITE_MARK = "󰧘"
@@ -1391,8 +1391,15 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
       </Show>
       <Switch>
         <Match when={props.last || final() || props.message.error?.name === "MessageAbortedError"}>
-          <box paddingLeft={3}>
-            <text marginTop={1}>
+          <box
+            paddingLeft={2}
+            marginTop={1}
+            border={["left"]}
+            borderColor={theme.textMuted}
+            customBorderChars={SplitBorder.customBorderChars}
+            paddingRight={1}
+          >
+            <text>
               <span
                 style={{
                   fg: theme.textMuted,
