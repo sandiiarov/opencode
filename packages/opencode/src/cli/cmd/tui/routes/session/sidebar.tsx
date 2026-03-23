@@ -7,7 +7,7 @@ import { Installation } from "@/installation"
 import { useDirectory } from "../../context/directory"
 import { useKV } from "../../context/kv"
 import { TodoItem } from "../../component/todo-item"
-import { lspcolor, lspicon } from "@tui/util/icon"
+import { langcolor, lspcolor, lspicon, pathicon } from "@tui/util/icon"
 
 const contextColor = (theme: ReturnType<typeof useTheme>["theme"], n?: number | null) => {
   if (n == null) return theme.textMuted
@@ -269,9 +269,14 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
                     {(item) => {
                       return (
                         <box flexDirection="row" gap={1} justifyContent="space-between">
-                          <text fg={theme.textMuted} wrapMode="none">
-                            {item.file}
-                          </text>
+                          <box flexDirection="row" gap={1}>
+                            <text fg={langcolor(item.file)} flexShrink={0}>
+                              {pathicon(item.file)}
+                            </text>
+                            <text fg={theme.textMuted} wrapMode="none">
+                              {item.file}
+                            </text>
+                          </box>
                           <box flexDirection="row" gap={1} flexShrink={0}>
                             <Show when={item.additions}>
                               <text fg={theme.diffAdded}>+{item.additions}</text>
