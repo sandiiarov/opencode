@@ -43,15 +43,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         current: agents()[0].name,
       })
       const { theme } = useTheme()
-      const colors = createMemo(() => [
-        theme.secondary,
-        theme.accent,
-        theme.success,
-        theme.warning,
-        theme.primary,
-        theme.error,
-        theme.info,
-      ])
+      const colors = createMemo(() => [theme.error, theme.info, theme.success])
       return {
         list() {
           return agents()

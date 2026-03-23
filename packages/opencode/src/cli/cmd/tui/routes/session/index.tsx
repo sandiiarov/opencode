@@ -1417,8 +1417,9 @@ const PART_MAPPING = {
 }
 
 const tint = {
-  think: RGBA.fromHex("#94e2d5"),
-  text: RGBA.fromHex("#74c7ec"),
+  think: RGBA.fromHex("#f9e2af"),
+  text: RGBA.fromHex("#a6e3a1"),
+  tool: RGBA.fromHex("#cba6f7"),
 }
 
 function Pane(props: { id: string; color: RGBA; children: JSX.Element }) {
@@ -1448,7 +1449,7 @@ function Pane(props: { id: string; color: RGBA; children: JSX.Element }) {
 }
 
 function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: AssistantMessage }) {
-  const { theme, subtleSyntax } = useTheme()
+  const { subtleSyntax } = useTheme()
   const ctx = use()
   const content = createMemo(() => {
     // Filter out redacted reasoning chunks from OpenRouter
@@ -1700,7 +1701,7 @@ function InlineTool(props: {
       marginTop={margin()}
       paddingLeft={2}
       customBorderChars={SplitBorder.customBorderChars}
-      borderColor={theme.diffHunkHeader}
+      borderColor={tint.tool}
       onMouseOver={() => props.onClick && setHover(true)}
       onMouseOut={() => setHover(false)}
       onMouseUp={() => {
@@ -1770,7 +1771,7 @@ function BlockTool(props: {
       gap={1}
       backgroundColor={hover() ? theme.backgroundMenu : theme.backgroundPanel}
       customBorderChars={SplitBorder.customBorderChars}
-      borderColor={theme.diffHunkHeader}
+      borderColor={tint.tool}
       onMouseOver={() => props.onClick && setHover(true)}
       onMouseOut={() => setHover(false)}
       onMouseUp={() => {
