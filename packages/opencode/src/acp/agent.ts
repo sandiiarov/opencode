@@ -38,6 +38,7 @@ import { Provider } from "../provider/provider"
 import { ModelID, ProviderID } from "../provider/schema"
 import { Agent as AgentModule } from "../agent/agent"
 import { Installation } from "@/installation"
+import { renderNumberedOutput } from "@/tool/hashline"
 import { MessageV2 } from "@/session/message-v2"
 import { Config } from "@/config/config"
 import { Todo } from "@/session/todo"
@@ -338,26 +339,22 @@ export namespace ACP {
                 this.toolStarts.delete(part.callID)
                 this.bashSnapshots.delete(part.callID)
                 const kind = toToolKind(part.tool)
+                const output = renderToolOutput(part.tool, part.state.output)
                 const content: ToolCallContent[] = [
                   {
                     type: "content",
                     content: {
                       type: "text",
-                      text: part.state.output,
+                      text: output,
                     },
                   },
                 ]
 
                 if (kind === "edit") {
-                  const input = part.state.input
-                  const filePath = typeof input["filePath"] === "string" ? input["filePath"] : ""
-                  const oldText = typeof input["oldString"] === "string" ? input["oldString"] : ""
-                  const newText =
-                    typeof input["newString"] === "string"
-                      ? input["newString"]
-                      : typeof input["content"] === "string"
-                        ? input["content"]
-                        : ""
+                  const meta = part.state.metadata?.filediff as Record<string, unknown> | undefined
+                  const filePath = typeof meta?.["file"] === "string" ? meta["file"] : ""
+                  const oldText = typeof meta?.["before"] === "string" ? meta["before"] : ""
+                  const newText = typeof meta?.["after"] === "string" ? meta["after"] : ""
                   content.push({
                     type: "diff",
                     path: filePath,
@@ -405,7 +402,7 @@ export namespace ACP {
                       title: part.state.title,
                       rawInput: part.state.input,
                       rawOutput: {
-                        output: part.state.output,
+                        output,
                         metadata: part.state.metadata,
                       },
                     },
@@ -853,26 +850,22 @@ export namespace ACP {
               this.toolStarts.delete(part.callID)
               this.bashSnapshots.delete(part.callID)
               const kind = toToolKind(part.tool)
+              const text = renderToolOutput(part.tool, part.state.output)
               const content: ToolCallContent[] = [
                 {
                   type: "content",
                   content: {
                     type: "text",
-                    text: part.state.output,
+                    text,
                   },
                 },
               ]
 
               if (kind === "edit") {
-                const input = part.state.input
-                const filePath = typeof input["filePath"] === "string" ? input["filePath"] : ""
-                const oldText = typeof input["oldString"] === "string" ? input["oldString"] : ""
-                const newText =
-                  typeof input["newString"] === "string"
-                    ? input["newString"]
-                    : typeof input["content"] === "string"
-                      ? input["content"]
-                      : ""
+                const meta = part.state.metadata?.filediff as Record<string, unknown> | undefined
+                const filePath = typeof meta?.["file"] === "string" ? meta["file"] : ""
+                const oldText = typeof meta?.["before"] === "string" ? meta["before"] : ""
+                const newText = typeof meta?.["after"] === "string" ? meta["after"] : ""
                 content.push({
                   type: "diff",
                   path: filePath,
@@ -920,7 +913,7 @@ export namespace ACP {
                     title: part.state.title,
                     rawInput: part.state.input,
                     rawOutput: {
-                      output: part.state.output,
+                      output: text,
                       metadata: part.state.metadata,
                     },
                   },
@@ -1489,7 +1482,6 @@ export namespace ACP {
         return "fetch"
 
       case "edit":
-      case "patch":
       case "write":
         return "edit"
 
@@ -1525,6 +1517,11 @@ export namespace ACP {
       default:
         return []
     }
+  }
+
+  function renderToolOutput(tool: string, output: string) {
+    if (tool === "read" || tool === "edit") return renderNumberedOutput(output)
+    return output
   }
 
   async function defaultModel(config: ACPConfig, cwd?: string): Promise<{ providerID: ProviderID; modelID: ModelID }> {

@@ -26,7 +26,6 @@ import { Flag } from "@/flag/flag"
 import { Log } from "@/util/log"
 import { LspTool } from "./lsp"
 import { Truncate } from "./truncate"
-import { ApplyPatchTool } from "./apply_patch"
 import { Glob } from "../util/glob"
 import { pathToFileURL } from "url"
 import { Effect, Layer, ServiceMap } from "effect"
@@ -128,7 +127,6 @@ export namespace ToolRegistry {
           WebSearchTool,
           CodeSearchTool,
           SkillTool,
-          ApplyPatchTool,
           ...(Flag.OPENCODE_EXPERIMENTAL_LSP_TOOL ? [LspTool] : []),
           ...(cfg.experimental?.batch_tool === true ? [BatchTool] : []),
           ...(Flag.OPENCODE_EXPERIMENTAL_PLAN_MODE && Flag.OPENCODE_CLIENT === "cli" ? [PlanExitTool] : []),
@@ -166,12 +164,6 @@ export namespace ToolRegistry {
                 if (tool.id === "codesearch" || tool.id === "websearch") {
                   return model.providerID === ProviderID.opencode || Flag.OPENCODE_ENABLE_EXA
                 }
-
-                // use apply tool in same format as codex
-                const usePatch =
-                  model.modelID.includes("gpt-") && !model.modelID.includes("oss") && !model.modelID.includes("gpt-4")
-                if (tool.id === "apply_patch") return usePatch
-                if (tool.id === "edit" || tool.id === "write") return !usePatch
 
                 return true
               })

@@ -41,7 +41,6 @@ import { TodoWriteTool } from "@/tool/todo"
 import type { GrepTool } from "@/tool/grep"
 import type { ListTool } from "@/tool/ls"
 import type { EditTool } from "@/tool/edit"
-import type { ApplyPatchTool } from "@/tool/apply_patch"
 import type { WebFetchTool } from "@/tool/webfetch"
 import type { TaskTool } from "@/tool/task"
 import type { QuestionTool } from "@/tool/question"
@@ -1417,6 +1416,37 @@ const PART_MAPPING = {
   reasoning: ReasoningPart,
 }
 
+const tint = {
+  think: RGBA.fromHex("#94e2d5"),
+  text: RGBA.fromHex("#74c7ec"),
+}
+
+function Pane(props: { id: string; color: RGBA; children: JSX.Element }) {
+  const { theme } = useTheme()
+  return (
+    <box
+      id={props.id}
+      border={["left"]}
+      borderColor={props.color}
+      customBorderChars={SplitBorder.customBorderChars}
+      marginTop={1}
+      flexShrink={0}
+    >
+      <box
+        paddingTop={1}
+        paddingRight={2}
+        paddingBottom={1}
+        paddingLeft={2}
+        backgroundColor={theme.backgroundPanel}
+        flexDirection="column"
+        flexShrink={0}
+      >
+        {props.children}
+      </box>
+    </box>
+  )
+}
+
 function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: AssistantMessage }) {
   const { theme, subtleSyntax } = useTheme()
   const ctx = use()
@@ -1427,27 +1457,30 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
   })
   return (
     <Show when={content() && ctx.showThinking()}>
-      <box id={"text-" + props.part.id} paddingLeft={3} marginTop={1} flexDirection="column">
-        <code
-          filetype="markdown"
-          drawUnstyledText={false}
-          streaming={true}
-          syntaxStyle={subtleSyntax()}
-          content={"_Thinking:_ " + content()}
-          conceal={ctx.conceal()}
-          fg={theme.textMuted}
-        />
-      </box>
+      <Pane id={"text-" + props.part.id} color={tint.think}>
+        <text fg={tint.think}>Thinking</text>
+        <box paddingTop={1}>
+          <code
+            filetype="markdown"
+            drawUnstyledText={false}
+            streaming={true}
+            syntaxStyle={subtleSyntax()}
+            content={content()}
+            conceal={ctx.conceal()}
+            fg={tint.think}
+          />
+        </box>
+      </Pane>
     </Show>
   )
 }
 
 function TextPart(props: { last: boolean; part: TextPart; message: AssistantMessage }) {
   const ctx = use()
-  const { theme, syntax } = useTheme()
+  const { syntax } = useTheme()
   return (
     <Show when={props.part.text.trim()}>
-      <box id={"text-" + props.part.id} paddingLeft={3} marginTop={1} flexShrink={0}>
+      <Pane id={"text-" + props.part.id} color={tint.text}>
         <Switch>
           <Match when={Flag.OPENCODE_EXPERIMENTAL_MARKDOWN}>
             <markdown
@@ -1465,11 +1498,11 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
               syntaxStyle={syntax()}
               content={props.part.text.trim()}
               conceal={ctx.conceal()}
-              fg={theme.text}
+              fg={tint.text}
             />
           </Match>
         </Switch>
-      </box>
+      </Pane>
     </Show>
   )
 }
@@ -1545,9 +1578,6 @@ function ToolPart(props: { last: boolean; part: ToolPart; message: AssistantMess
         </Match>
         <Match when={props.part.tool === "task"}>
           <Task {...toolprops} />
-        </Match>
-        <Match when={props.part.tool === "apply_patch"}>
-          <ApplyPatch {...toolprops} />
         </Match>
         <Match when={props.part.tool === "todowrite"}>
           <TodoWrite {...toolprops} />
@@ -2076,82 +2106,7 @@ function Edit(props: ToolProps<typeof EditTool>) {
       </Match>
       <Match when={true}>
         <InlineTool icon="←" pending="Preparing edit..." complete={props.input.filePath} part={props.part}>
-          Edit {pathlabel(normalizePath(props.input.filePath!))} {input({ replaceAll: props.input.replaceAll })}
-        </InlineTool>
-      </Match>
-    </Switch>
-  )
-}
-
-function ApplyPatch(props: ToolProps<typeof ApplyPatchTool>) {
-  const ctx = use()
-  const { theme, syntax } = useTheme()
-
-  const files = createMemo(() => props.metadata.files ?? [])
-
-  const view = createMemo(() => {
-    const diffStyle = ctx.tui.diff_style
-    if (diffStyle === "stacked") return "unified"
-    return ctx.width > 120 ? "split" : "unified"
-  })
-
-  function Diff(p: { diff: string; filePath: string }) {
-    return (
-      <box backgroundColor={theme.diffContextBg}>
-        <diff
-          diff={p.diff}
-          view={view()}
-          filetype={filetype(p.filePath)}
-          syntaxStyle={syntax()}
-          showLineNumbers={true}
-          width="100%"
-          wrapMode={ctx.diffWrapMode()}
-          fg={theme.text}
-          addedBg={theme.diffAddedBg}
-          removedBg={theme.diffRemovedBg}
-          contextBg={theme.diffContextBg}
-          addedSignColor={theme.diffHighlightAdded}
-          removedSignColor={theme.diffHighlightRemoved}
-          lineNumberFg={theme.diffLineNumber}
-          lineNumberBg={theme.diffContextBg}
-          addedLineNumberBg={theme.diffAddedLineNumberBg}
-          removedLineNumberBg={theme.diffRemovedLineNumberBg}
-        />
-      </box>
-    )
-  }
-
-  function title(file: { type: string; relativePath: string; filePath: string; deletions: number }) {
-    if (file.type === "delete") return "# Deleted " + file.relativePath
-    if (file.type === "add") return "# Created " + file.relativePath
-    if (file.type === "move") return "# Moved " + normalizePath(file.filePath) + " → " + file.relativePath
-    return "← Patched " + file.relativePath
-  }
-
-  return (
-    <Switch>
-      <Match when={files().length > 0}>
-        <For each={files()}>
-          {(file) => (
-            <BlockTool title={title(file)} part={props.part}>
-              <Show
-                when={file.type !== "delete"}
-                fallback={
-                  <text fg={theme.diffRemoved}>
-                    -{file.deletions} line{file.deletions !== 1 ? "s" : ""}
-                  </text>
-                }
-              >
-                <Diff diff={file.diff} filePath={file.filePath} />
-                <Diagnostics diagnostics={props.metadata.diagnostics} filePath={file.movePath ?? file.filePath} />
-              </Show>
-            </BlockTool>
-          )}
-        </For>
-      </Match>
-      <Match when={true}>
-        <InlineTool icon="%" pending="Preparing patch..." complete={false} part={props.part}>
-          Patch
+          Edit {pathlabel(normalizePath(props.input.filePath!))}
         </InlineTool>
       </Match>
     </Switch>

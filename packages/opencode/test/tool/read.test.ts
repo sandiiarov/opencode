@@ -7,6 +7,7 @@ import { tmpdir } from "../fixture/fixture"
 import { Permission } from "../../src/permission"
 import { Agent } from "../../src/agent/agent"
 import { SessionID, MessageID } from "../../src/session/schema"
+import { computeLineHash } from "../../src/tool/hashline"
 
 const FIXTURES_DIR = path.join(import.meta.dir, "fixtures")
 
@@ -262,6 +263,23 @@ describe("tool.read truncation", () => {
     })
   })
 
+  test("returns hashline anchors for text files", async () => {
+    await using tmp = await tmpdir({
+      init: async (dir) => {
+        await Bun.write(path.join(dir, "small.txt"), "alpha\nbeta\n")
+      },
+    })
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const read = await ReadTool.init()
+        const result = await read.execute({ filePath: path.join(tmp.path, "small.txt") }, ctx)
+        expect(result.output).toContain(`1#${computeLineHash(1, "alpha")}|alpha`)
+        expect(result.output).toContain(`2#${computeLineHash(2, "beta")}|beta`)
+      },
+    })
+  })
+
   test("respects offset parameter", async () => {
     await using tmp = await tmpdir({
       init: async (dir) => {
@@ -274,10 +292,10 @@ describe("tool.read truncation", () => {
       fn: async () => {
         const read = await ReadTool.init()
         const result = await read.execute({ filePath: path.join(tmp.path, "offset.txt"), offset: 10, limit: 5 }, ctx)
-        expect(result.output).toContain("10: line10")
-        expect(result.output).toContain("14: line14")
-        expect(result.output).not.toContain("9: line10")
-        expect(result.output).not.toContain("15: line15")
+        expect(result.output).toContain(`10#${computeLineHash(10, "line10")}|line10`)
+        expect(result.output).toContain(`14#${computeLineHash(14, "line14")}|line14`)
+        expect(result.output).not.toContain(`9#${computeLineHash(9, "line10")}|line10`)
+        expect(result.output).not.toContain(`15#${computeLineHash(15, "line15")}|line15`)
         expect(result.output).toContain("line10")
         expect(result.output).toContain("line14")
         expect(result.output).not.toContain("line0")

@@ -1,10 +1,11 @@
-Performs exact string replacements in files. 
+Performs additive hashline edits in files.
 
 Usage:
-- You must use your `Read` tool at least once in the conversation before editing. This tool will error if you attempt an edit without reading the file. 
-- When editing text from Read tool output, ensure you preserve the exact indentation (tabs/spaces) as it appears AFTER the line number prefix. The line number prefix format is: line number + colon + space (e.g., `1: `). Everything after that space is the actual file content to match. Never include any part of the line number prefix in the oldString or newString.
+- You must use your `Read` tool before editing an existing file. Copy the exact `LINE#ID` anchors from the latest read output.
+- Keep edits additive and narrow. Prefer a few small anchored operations over rewriting unrelated surrounding code.
+- Each edit call applies against the original file state. Do not renumber later edits in the same call.
+- Use `replace` for line/range replacement, `append` to insert after an anchor or at EOF, and `prepend` to insert before an anchor or at BOF.
+- `lines` must contain only the new file content to insert or replace. Do not include `LINE#ID` prefixes or diff markers.
 - ALWAYS prefer editing existing files in the codebase. NEVER write new files unless explicitly required.
 - Only use emojis if the user explicitly requests it. Avoid adding emojis to files unless asked.
-- The edit will FAIL if `oldString` is not found in the file with an error "oldString not found in content".
-- The edit will FAIL if `oldString` is found multiple times in the file with an error "Found multiple matches for oldString. Provide more surrounding lines in oldString to identify the correct match." Either provide a larger string with more surrounding context to make it unique or use `replaceAll` to change every instance of `oldString`. 
-- Use `replaceAll` for replacing and renaming strings across the file. This parameter is useful if you want to rename a variable for instance.
+- If anchors no longer match, the tool will return updated hashline references. Reuse those exact references or re-read the file.
