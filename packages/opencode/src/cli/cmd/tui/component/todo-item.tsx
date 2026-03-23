@@ -11,14 +11,7 @@ export function TodoItem(props: TodoItemProps) {
   const { theme } = useTheme()
   const fg =
     props.status === "in_progress" ? theme.warning : props.status === "completed" ? theme.textMuted : theme.textMuted
-  const icon =
-    props.style === "sidebar"
-      ? props.status === "completed"
-        ? ""
-        : props.status === "in_progress"
-          ? ""
-          : ""
-      : `[${props.status === "completed" ? "✓" : props.status === "in_progress" ? "•" : " "}]`
+  const icon = props.status === "completed" ? "" : props.status === "in_progress" ? "" : ""
 
   return (
     <box flexDirection="row" gap={0}>
