@@ -1390,6 +1390,51 @@ export namespace LSPServer {
     },
   }
 
+  export const Json: Info = {
+    id: "json",
+    extensions: [".json", ".jsonc"],
+    root: NearestRoot(["package-lock.json", "bun.lockb", "bun.lock", "pnpm-lock.yaml", "yarn.lock"]),
+    async spawn(root) {
+      let binary = which("vscode-json-languageserver")
+      const args: string[] = []
+      if (!binary) {
+        const js = path.join(
+          Global.Path.bin,
+          "node_modules",
+          "vscode-json-languageserver",
+          "bin",
+          "vscode-json-languageserver",
+        )
+        if (!(await Filesystem.exists(js))) {
+          if (Flag.OPENCODE_DISABLE_LSP_DOWNLOAD) return
+          await Process.spawn([BunProc.which(), "install", "vscode-json-languageserver"], {
+            cwd: Global.Path.bin,
+            env: {
+              ...process.env,
+              BUN_BE_BUN: "1",
+            },
+            stdout: "pipe",
+            stderr: "pipe",
+            stdin: "pipe",
+          }).exited
+        }
+        binary = BunProc.which()
+        args.push("run", js)
+      }
+      args.push("--stdio")
+      const proc = spawn(binary, args, {
+        cwd: root,
+        env: {
+          ...process.env,
+          BUN_BE_BUN: "1",
+        },
+      })
+      return {
+        process: proc,
+      }
+    },
+  }
+
   export const YamlLS: Info = {
     id: "yaml-ls",
     extensions: [".yaml", ".yml"],
