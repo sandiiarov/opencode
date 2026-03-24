@@ -8,7 +8,6 @@ import { Config } from "../config/config"
 import { MCP } from "../mcp"
 import { Skill } from "../skill"
 import { Log } from "../util/log"
-import PROMPT_HANDOFF from "./template/handoff.txt"
 import PROMPT_INITIALIZE from "./template/initialize.txt"
 import PROMPT_REVIEW from "./template/review.txt"
 
@@ -62,7 +61,6 @@ export namespace Command {
   }
 
   export const Default = {
-    HANDOFF: "handoff",
     INIT: "init",
     REVIEW: "review",
   } as const
@@ -81,15 +79,6 @@ export namespace Command {
         const cfg = yield* Effect.promise(() => Config.get())
         const commands: Record<string, Info> = {}
 
-        commands[Default.HANDOFF] = {
-          name: Default.HANDOFF,
-          description: "create a handoff summary for a new session",
-          source: "command",
-          get template() {
-            return PROMPT_HANDOFF.replace("${path}", ctx.worktree)
-          },
-          hints: hints(PROMPT_HANDOFF),
-        }
         commands[Default.INIT] = {
           name: Default.INIT,
           description: "create or improve a repo-specific AGENTS.md",
