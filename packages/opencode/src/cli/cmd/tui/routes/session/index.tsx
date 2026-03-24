@@ -82,14 +82,14 @@ import { formatTranscript } from "../../util/transcript"
 import { UI } from "@/cli/ui.ts"
 import { useTuiConfig } from "../../context/tui-config"
 
-const TOOL_MARK = "󰒔"
+const TOOL_MARK = ""
 const META_MARK = "󰿦"
-const SEARCH_MARK = "󰎃"
-const READ_MARK = "󰧚"
-const WRITE_MARK = "󰏬"
+const SEARCH_MARK = ""
+const READ_MARK = ""
+const WRITE_MARK = ""
 const SHELL_MARK = ""
 const SEP_MARK = ""
-const FETCH_MARK = "󰾔"
+const FETCH_MARK = "󰖟"
 addDefaultParsers(parsers.parsers)
 
 class CustomSpeedScroll implements ScrollAcceleration {
@@ -1669,7 +1669,14 @@ function ToolTitle(props: { fallback: string; when: any; icon: string; children:
   const { theme } = useTheme()
   return (
     <text paddingLeft={3} fg={props.when ? theme.textMuted : theme.text}>
-      <Show fallback={<>~ {props.fallback}</>} when={props.when}>
+      <Show
+        fallback={
+          <>
+            <span style={{ fg: tint.think, bold: true }}></span> {props.fallback}
+          </>
+        }
+        when={props.when}
+      >
         <span style={{ bold: true }}>{props.icon}</span> {props.children}
       </Show>
     </text>
@@ -1767,7 +1774,14 @@ function InlineTool(props: {
         </Match>
         <Match when={true}>
           <text paddingLeft={3} fg={fg()} attributes={denied() ? TextAttributes.STRIKETHROUGH : undefined}>
-            <Show fallback={<>~ {props.pending}</>} when={props.complete}>
+            <Show
+              fallback={
+                <>
+                  <span style={{ fg: tint.think }}></span> {props.pending}
+                </>
+              }
+              when={props.complete}
+            >
               <span style={{ fg: icon() }}>{props.icon}</span> {props.children}
             </Show>
           </text>
@@ -2106,12 +2120,12 @@ function Task(props: ToolProps<typeof TaskTool>) {
 
     if (isRunning() && tools().length > 0) {
       // content[0] += ` · ${tools().length} toolcalls`
-      if (current()) content.push(`↳ ${Locale.titlecase(current()!.tool)} ${(current()!.state as any).title}`)
-      else content.push(`↳ ${tools().length} toolcalls`)
+      if (current()) content.push(` ${Locale.titlecase(current()!.tool)} ${(current()!.state as any).title}`)
+      else content.push(` ${tools().length} toolcalls`)
     }
 
     if (props.part.state.status === "completed") {
-      content.push(`└ ${tools().length} toolcalls · ${Locale.duration(duration())}`)
+      content.push(` ${tools().length} toolcalls · ${Locale.duration(duration())}`)
     }
 
     return content.join("\n")
@@ -2119,7 +2133,7 @@ function Task(props: ToolProps<typeof TaskTool>) {
 
   return (
     <InlineTool
-      icon="│"
+      icon="┃"
       spinner={isRunning()}
       complete={props.input.description}
       pending="Delegating..."

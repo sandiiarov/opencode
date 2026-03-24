@@ -16,14 +16,14 @@ import { Locale } from "@/util/locale"
 import { Global } from "@/global"
 import { useDialog } from "../../ui/dialog"
 import { useTuiConfig } from "../../context/tui-config"
-const TOOL_MARK = "󰒔"
-const SEARCH_MARK = "󰎃"
-const READ_MARK = "󰧚"
-const WRITE_MARK = "󰏬"
+const TOOL_MARK = ""
+const SEARCH_MARK = ""
+const READ_MARK = ""
+const WRITE_MARK = ""
 const SHELL_MARK = ""
-const WARN_MARK = "󰀧"
-const FETCH_MARK = "󰾔"
-const TASK_MARK = "󰞋"
+const WARN_MARK = "󱈸"
+const FETCH_MARK = "󰖟"
+const TASK_MARK = ""
 type PermissionStage = "permission" | "always" | "reject"
 
 function normalizePath(input?: string) {
@@ -397,7 +397,7 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
 
             if (permission === "doom_loop") {
               return {
-                icon: "⟳",
+                icon: "",
                 title: "Continue after repeated failures",
                 body: (
                   <box paddingLeft={1}>
