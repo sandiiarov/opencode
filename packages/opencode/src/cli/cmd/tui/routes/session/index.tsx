@@ -86,8 +86,10 @@ const TOOL_MARK = "󰒔"
 const META_MARK = "󰿦"
 const SEARCH_MARK = "󰎃"
 const READ_MARK = "󰧚"
-const WRITE_MARK = "󰧘"
+const WRITE_MARK = "󰏬"
+const SHELL_MARK = ""
 const SEP_MARK = ""
+const FETCH_MARK = "󰾔"
 addDefaultParsers(parsers.parsers)
 
 class CustomSpeedScroll implements ScrollAcceleration {
@@ -1641,7 +1643,7 @@ function GenericTool(props: ToolProps<any>) {
     <Show
       when={props.output && ctx.showGenericToolOutput()}
       fallback={
-        <InlineTool icon="⚙" pending="Writing command..." complete={true} part={props.part}>
+        <InlineTool icon={TOOL_MARK} pending="Writing command..." complete={true} part={props.part}>
           {props.tool} {input(props.input)}
         </InlineTool>
       }
@@ -1839,8 +1841,8 @@ function Bash(props: ToolProps<typeof BashTool>) {
   const lines = createMemo(() => output().split("\n"))
   const overflow = createMemo(() => lines().length > 10)
   const limited = createMemo(() => {
-    if (expanded() || !overflow()) return output()
-    return [...lines().slice(0, 10), "…"].join("\n")
+    if (expanded() || !overflow()) return lines()
+    return [...lines().slice(0, 10), "…"]
   })
 
   const workdirDisplay = createMemo(() => {
@@ -1872,16 +1874,28 @@ function Bash(props: ToolProps<typeof BashTool>) {
     <Switch>
       <Match when={props.metadata.output !== undefined}>
         <BlockTool
-          icon={TOOL_MARK}
+          icon={SHELL_MARK}
           title={title()}
           part={props.part}
           spinner={isRunning()}
           onClick={overflow() ? () => setExpanded((prev) => !prev) : undefined}
         >
           <box gap={1}>
-            <text fg={theme.text}>$ {props.input.command}</text>
+            <text fg={theme.text}>
+              <span style={{ fg: tint.tool }}>{SHELL_MARK}</span> {props.input.command}
+            </text>
             <Show when={output()}>
-              <text fg={theme.text}>{limited()}</text>
+              <For each={limited()}>
+                {(line) => (
+                  <text fg={theme.text}>
+                    <Show when={line.startsWith("$ ")} fallback={line}>
+                      <>
+                        <span style={{ fg: tint.tool }}>{SHELL_MARK}</span> {line.slice(2)}
+                      </>
+                    </Show>
+                  </text>
+                )}
+              </For>
             </Show>
             <Show when={overflow()}>
               <text fg={theme.textMuted}>{expanded() ? "Click to collapse" : "Click to expand"}</text>
@@ -1890,7 +1904,7 @@ function Bash(props: ToolProps<typeof BashTool>) {
         </BlockTool>
       </Match>
       <Match when={true}>
-        <InlineTool icon="$" pending="Writing command..." complete={props.input.command} part={props.part}>
+        <InlineTool icon={SHELL_MARK} pending="Writing command..." complete={props.input.command} part={props.part}>
           {props.input.command}
         </InlineTool>
       </Match>
@@ -1909,7 +1923,7 @@ function Write(props: ToolProps<typeof WriteTool>) {
     <Switch>
       <Match when={props.metadata.diagnostics !== undefined}>
         <BlockTool
-          icon={TOOL_MARK}
+          icon={WRITE_MARK}
           title={
             <>
               Wrote <FileLabel path={normalizePath(props.input.filePath!)} />
@@ -2022,7 +2036,12 @@ function List(props: ToolProps<typeof ListTool>) {
 
 function WebFetch(props: ToolProps<typeof WebFetchTool>) {
   return (
-    <InlineTool icon="%" pending="Fetching from the web..." complete={(props.input as any).url} part={props.part}>
+    <InlineTool
+      icon={FETCH_MARK}
+      pending="Fetching from the web..."
+      complete={(props.input as any).url}
+      part={props.part}
+    >
       WebFetch {(props.input as any).url}
     </InlineTool>
   )
@@ -2032,7 +2051,7 @@ function CodeSearch(props: ToolProps<any>) {
   const input = props.input as any
   const metadata = props.metadata as any
   return (
-    <InlineTool icon="◇" pending="Searching code..." complete={input.query} part={props.part}>
+    <InlineTool icon={FETCH_MARK} pending="Searching code..." complete={input.query} part={props.part}>
       Exa Code Search "{input.query}" <Show when={metadata.results}>({metadata.results} results)</Show>
     </InlineTool>
   )
@@ -2042,7 +2061,7 @@ function WebSearch(props: ToolProps<any>) {
   const input = props.input as any
   const metadata = props.metadata as any
   return (
-    <InlineTool icon="◈" pending="Searching web..." complete={input.query} part={props.part}>
+    <InlineTool icon={FETCH_MARK} pending="Searching web..." complete={input.query} part={props.part}>
       Exa Web Search "{input.query}" <Show when={metadata.numResults}>({metadata.numResults} results)</Show>
     </InlineTool>
   )
@@ -2190,7 +2209,7 @@ function TodoWrite(props: ToolProps<typeof TodoWriteTool>) {
         </BlockTool>
       </Match>
       <Match when={true}>
-        <InlineTool icon="⚙" pending="Updating todos..." complete={false} part={props.part}>
+        <InlineTool icon={TOOL_MARK} pending="Updating todos..." complete={false} part={props.part}>
           Updating todos...
         </InlineTool>
       </Match>

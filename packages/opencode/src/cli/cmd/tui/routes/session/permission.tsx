@@ -19,7 +19,11 @@ import { useTuiConfig } from "../../context/tui-config"
 const TOOL_MARK = "󰒔"
 const SEARCH_MARK = "󰎃"
 const READ_MARK = "󰧚"
-const WRITE_MARK = "󰧘"
+const WRITE_MARK = "󰏬"
+const SHELL_MARK = ""
+const WARN_MARK = "󰀧"
+const FETCH_MARK = "󰾔"
+const TASK_MARK = "󰞋"
 type PermissionStage = "permission" | "always" | "reject"
 
 function normalizePath(input?: string) {
@@ -293,7 +297,9 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
                 body: (
                   <Show when={command}>
                     <box paddingLeft={1}>
-                      <text fg={theme.text}>{"$ " + command}</text>
+                      <text fg={theme.text}>
+                        <span style={{ fg: theme.primary }}>{SHELL_MARK}</span> {command}
+                      </text>
                     </box>
                   </Show>
                 ),
@@ -309,7 +315,7 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
                 body: (
                   <Show when={desc}>
                     <box paddingLeft={1}>
-                      <text fg={theme.text}>{"◉ " + desc}</text>
+                      <text fg={theme.text}>{TASK_MARK + " " + desc}</text>
                     </box>
                   </Show>
                 ),
@@ -319,7 +325,7 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
             if (permission === "webfetch") {
               const url = typeof data.url === "string" ? data.url : ""
               return {
-                icon: "%",
+                icon: FETCH_MARK,
                 title: `WebFetch ${url}`,
                 body: (
                   <Show when={url}>
@@ -334,7 +340,7 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
             if (permission === "websearch") {
               const query = typeof data.query === "string" ? data.query : ""
               return {
-                icon: "◈",
+                icon: FETCH_MARK,
                 title: `Exa Web Search "${query}"`,
                 body: (
                   <Show when={query}>
@@ -349,7 +355,7 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
             if (permission === "codesearch") {
               const query = typeof data.query === "string" ? data.query : ""
               return {
-                icon: "◇",
+                icon: FETCH_MARK,
                 title: `Exa Code Search "${query}"`,
                 body: (
                   <Show when={query}>
@@ -402,7 +408,7 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
             }
 
             return {
-              icon: "⚙",
+              icon: TOOL_MARK,
               title: `Call tool ${permission}`,
               body: (
                 <box paddingLeft={1}>
@@ -417,7 +423,7 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
           const header = () => (
             <box flexDirection="column" gap={0}>
               <box flexDirection="row" gap={1} flexShrink={0}>
-                <text fg={theme.warning}>{"△"}</text>
+                <text fg={theme.warning}>{WARN_MARK}</text>
                 <text fg={theme.text}>Permission required</text>
               </box>
               <box flexDirection="row" gap={1} paddingLeft={2} flexShrink={0}>
@@ -500,7 +506,7 @@ function RejectPrompt(props: { onConfirm: (message: string) => void; onCancel: (
     >
       <box gap={1} paddingLeft={1} paddingRight={3} paddingTop={1} paddingBottom={1}>
         <box flexDirection="row" gap={1} paddingLeft={1}>
-          <text fg={theme.error}>{"△"}</text>
+          <text fg={theme.error}>{WARN_MARK}</text>
           <text fg={theme.text}>Reject permission</text>
         </box>
         <box paddingLeft={1}>
@@ -620,7 +626,7 @@ function Prompt<const T extends Record<string, string>>(props: {
           when={props.header}
           fallback={
             <box flexDirection="row" gap={1} paddingLeft={1} flexShrink={0}>
-              <text fg={theme.warning}>{"△"}</text>
+              <text fg={theme.warning}>{WARN_MARK}</text>
               <text fg={theme.text}>{props.title}</text>
             </box>
           }

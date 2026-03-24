@@ -9,6 +9,14 @@ import { useKV } from "../../context/kv"
 import { TodoItem } from "../../component/todo-item"
 import { langcolor, lspcolor, lspicon, pathicon } from "@tui/util/icon"
 
+const sidebar = 42
+const barw = sidebar - 5
+
+const contextIcon = {
+  empty: { start: "", body: "", end: "" },
+  fill: { start: "", body: "", end: "" },
+}
+
 const contextColor = (theme: ReturnType<typeof useTheme>["theme"], n?: number | null) => {
   if (n == null) return theme.textMuted
   if (n >= 35) return theme.error
@@ -17,11 +25,16 @@ const contextColor = (theme: ReturnType<typeof useTheme>["theme"], n?: number | 
 }
 
 const progress = (n?: number | null, w = 18) => {
-  if (n == null) return { fill: "", empty: "▓".repeat(w) }
-  const fill = Math.max(0, Math.min(w, Math.round((n / 100) * w)))
+  if (w <= 0) return { fill: "", empty: "" }
+  if (w === 1) return n ? { fill: contextIcon.fill.end, empty: "" } : { fill: "", empty: contextIcon.empty.end }
+  const fill = n == null ? 0 : Math.max(0, Math.min(w, Math.round((n / 100) * w)))
+  if (fill <= 0)
+    return { fill: "", empty: contextIcon.empty.start + contextIcon.empty.body.repeat(w - 2) + contextIcon.empty.end }
+  if (fill >= w)
+    return { fill: contextIcon.fill.start + contextIcon.fill.body.repeat(w - 2) + contextIcon.fill.end, empty: "" }
   return {
-    fill: "█".repeat(fill),
-    empty: "▓".repeat(w - fill),
+    fill: contextIcon.fill.start + contextIcon.fill.body.repeat(fill - 1),
+    empty: contextIcon.empty.body.repeat(w - fill - 1) + contextIcon.empty.end,
   }
 }
 
@@ -73,7 +86,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
     }
   })
   const contextFg = createMemo(() => contextColor(theme, context()?.percentage))
-  const bar = createMemo(() => progress(context()?.percentage))
+  const bar = createMemo(() => progress(context()?.percentage, barw))
 
   const directory = useDirectory()
   const kv = useKV()
@@ -87,7 +100,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
     <Show when={session()}>
       <box
         backgroundColor={theme.backgroundPanel}
-        width={42}
+        width={sidebar}
         height="100%"
         paddingTop={1}
         paddingBottom={1}
@@ -119,10 +132,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
               </text>
               <text fg={theme.text}> {context()?.tokens ?? 0}</text>
               <text fg={theme.text}> {cost().replace(/^[^\d-]+/, "")}</text>
-              <text>
-                <span style={{ fg: contextFg() }}>{bar().fill}</span>
-                <span style={{ fg: theme.borderSubtle }}>{bar().empty}</span>
-              </text>
+              <text fg={contextFg()}>{bar().fill + bar().empty}</text>
             </box>
             <Show when={mcpEntries().length > 0}>
               <box>
