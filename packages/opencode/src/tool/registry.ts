@@ -160,9 +160,9 @@ export namespace ToolRegistry {
           Promise.all(
             allTools
               .filter((tool) => {
-                // Enable websearch/codesearch for zen users OR via enable flag
+                // Expose websearch/codesearch by default for all providers
                 if (tool.id === "codesearch" || tool.id === "websearch") {
-                  return model.providerID === ProviderID.opencode || Flag.OPENCODE_ENABLE_EXA
+                  return true
                 }
 
                 return true
