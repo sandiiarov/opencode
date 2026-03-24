@@ -82,8 +82,8 @@ import { formatTranscript } from "../../util/transcript"
 import { UI } from "@/cli/ui.ts"
 import { useTuiConfig } from "../../context/tui-config"
 
-const TOOL_MARK = ""
-const BUILD_MARK = ""
+const TOOL_MARK = "󰒔"
+const META_MARK = "󰿦"
 const SEARCH_MARK = "󰎃"
 const READ_MARK = "󰧚"
 const WRITE_MARK = "󰧘"
@@ -1405,7 +1405,7 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
                   fg: theme.textMuted,
                 }}
               >
-                {props.message.mode === "build" ? BUILD_MARK : TOOL_MARK}
+                {META_MARK}
               </span>{" "}
               <span style={{ fg: theme.text }}>{Locale.titlecase(props.message.mode)}</span>
               <span style={{ fg: theme.textMuted }}>
@@ -1872,7 +1872,7 @@ function Bash(props: ToolProps<typeof BashTool>) {
     <Switch>
       <Match when={props.metadata.output !== undefined}>
         <BlockTool
-          icon={BUILD_MARK}
+          icon={TOOL_MARK}
           title={title()}
           part={props.part}
           spinner={isRunning()}
