@@ -84,9 +84,6 @@ export namespace Agent {
           const defaults = Permission.fromConfig({
             "*": "allow",
             doom_loop: "ask",
-            webfetch: "deny",
-            websearch: "deny",
-            codesearch: "deny",
             external_directory: {
               "*": "ask",
               ...Object.fromEntries(whitelistedDirs.map((dir) => [dir, "allow"])),
@@ -170,9 +167,9 @@ export namespace Agent {
                   glob: "allow",
                   list: "allow",
                   bash: "allow",
-                  webfetch: "deny",
-                  websearch: "deny",
-                  codesearch: "deny",
+                  webfetch: "allow",
+                  websearch: "allow",
+                  codesearch: "allow",
                   read: "allow",
                   external_directory: {
                     "*": "ask",
