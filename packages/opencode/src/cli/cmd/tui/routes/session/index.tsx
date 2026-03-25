@@ -19,6 +19,15 @@ import { useSync } from "@tui/context/sync"
 import { SplitBorder } from "@tui/component/border"
 import { Spinner } from "@tui/component/spinner"
 import { selectedForeground, useTheme } from "@tui/context/theme"
+import { FETCH_MARK, META_MARK, READ_MARK, SEARCH_MARK, SEP_MARK, SHELL_MARK, TOOL_MARK, WRITE_MARK } from "./icons"
+import {
+  DIAG_ERROR_MARK,
+  DIAG_HINT_MARK,
+  DIAG_INFO_MARK,
+  DIAG_WARN_MARK,
+  STATUS_OFF_MARK,
+  STATUS_ON_MARK,
+} from "../../icons"
 import {
   BoxRenderable,
   ScrollBoxRenderable,
@@ -82,14 +91,6 @@ import { formatTranscript } from "../../util/transcript"
 import { UI } from "@/cli/ui.ts"
 import { useTuiConfig } from "../../context/tui-config"
 
-const TOOL_MARK = ""
-const META_MARK = "󰿦"
-const SEARCH_MARK = ""
-const READ_MARK = ""
-const WRITE_MARK = ""
-const SHELL_MARK = ""
-const SEP_MARK = ""
-const FETCH_MARK = "󰖟"
 addDefaultParsers(parsers.parsers)
 
 class CustomSpeedScroll implements ScrollAcceleration {
@@ -1243,10 +1244,9 @@ function UserMessage(props: {
   pending?: string
 }) {
   const ctx = use()
-  const local = useLocal()
   const text = createMemo(() => props.parts.flatMap((x) => (x.type === "text" && !x.synthetic ? [x] : []))[0])
   const files = createMemo(() => props.parts.flatMap((x) => (x.type === "file" ? [x] : [])))
-  const sync = useSync()
+  const local = useLocal()
   const { theme } = useTheme()
   const [hover, setHover] = createSignal(false)
   const queued = createMemo(() => props.pending && props.message.id > props.pending)
@@ -1437,10 +1437,44 @@ const PART_MAPPING = {
   reasoning: ReasoningPart,
 }
 
-const tint = {
-  think: RGBA.fromHex("#f9e2af"),
-  text: RGBA.fromHex("#a6e3a1"),
-  tool: RGBA.fromHex("#cba6f7"),
+type ThemeValue = ReturnType<typeof useTheme>["theme"]
+type ThemeTone = { [Key in keyof ThemeValue]: ThemeValue[Key] extends RGBA ? Key : never }[keyof ThemeValue]
+
+const BLOCK_TONE = {
+  user: "primary",
+  assistant: {
+    thinking: "textMuted",
+    text: "text",
+  },
+  tool: {
+    default: "secondary",
+    bash: "success",
+    edit: "warning",
+    write: "success",
+    read: "primary",
+    list: "primary",
+    glob: "primary",
+    grep: "primary",
+    webfetch: "primary",
+    codesearch: "primary",
+    websearch: "primary",
+    task: "warning",
+    todowrite: "primary",
+    question: "error",
+    skill: "secondary",
+  },
+} as const satisfies {
+  user: ThemeTone
+  assistant: Record<string, ThemeTone>
+  tool: Record<string, ThemeTone>
+}
+
+function tone(theme: ReturnType<typeof useTheme>["theme"], value: ThemeTone) {
+  return theme[value]
+}
+
+function toolColor(theme: ReturnType<typeof useTheme>["theme"], tool: string) {
+  return tone(theme, BLOCK_TONE.tool[tool as keyof typeof BLOCK_TONE.tool] ?? BLOCK_TONE.tool.default)
 }
 
 function Pane(props: { id: string; color: RGBA; children: JSX.Element }) {
@@ -1470,7 +1504,7 @@ function Pane(props: { id: string; color: RGBA; children: JSX.Element }) {
 }
 
 function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: AssistantMessage }) {
-  const { subtleSyntax } = useTheme()
+  const { subtleSyntax, theme } = useTheme()
   const ctx = use()
   const content = createMemo(() => {
     // Filter out redacted reasoning chunks from OpenRouter
@@ -1479,8 +1513,8 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
   })
   return (
     <Show when={content() && ctx.showThinking()}>
-      <Pane id={"text-" + props.part.id} color={tint.think}>
-        <text fg={tint.think}>Thinking</text>
+      <Pane id={"text-" + props.part.id} color={tone(theme, BLOCK_TONE.assistant.thinking)}>
+        <text fg={tone(theme, BLOCK_TONE.assistant.thinking)}>Thinking</text>
         <box paddingTop={1}>
           <code
             filetype="markdown"
@@ -1489,7 +1523,7 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
             syntaxStyle={subtleSyntax()}
             content={content()}
             conceal={ctx.conceal()}
-            fg={tint.think}
+            fg={tone(theme, BLOCK_TONE.assistant.thinking)}
           />
         </box>
       </Pane>
@@ -1499,10 +1533,10 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
 
 function TextPart(props: { last: boolean; part: TextPart; message: AssistantMessage }) {
   const ctx = use()
-  const { syntax } = useTheme()
+  const { syntax, theme } = useTheme()
   return (
     <Show when={props.part.text.trim()}>
-      <Pane id={"text-" + props.part.id} color={tint.text}>
+      <Pane id={"text-" + props.part.id} color={tone(theme, BLOCK_TONE.assistant.text)}>
         <Switch>
           <Match when={Flag.OPENCODE_EXPERIMENTAL_MARKDOWN}>
             <markdown
@@ -1520,7 +1554,7 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
               syntaxStyle={syntax()}
               content={props.part.text.trim()}
               conceal={ctx.conceal()}
-              fg={tint.text}
+              fg={tone(theme, BLOCK_TONE.assistant.text)}
             />
           </Match>
         </Switch>
@@ -1668,18 +1702,11 @@ function GenericTool(props: ToolProps<any>) {
 function ToolTitle(props: { fallback: string; when: any; icon: string; children: JSX.Element }) {
   const { theme } = useTheme()
   return (
-    <text paddingLeft={3} fg={props.when ? theme.textMuted : theme.text}>
-      <Show
-        fallback={
-          <>
-            <span style={{ fg: tint.think, bold: true }}></span> {props.fallback}
-          </>
-        }
-        when={props.when}
-      >
+    <Show fallback={<Spinner color={theme.textMuted}>{props.fallback}</Spinner>} when={props.when}>
+      <text paddingLeft={3} fg={theme.text}>
         <span style={{ bold: true }}>{props.icon}</span> {props.children}
-      </Show>
-    </text>
+      </text>
+    </Show>
   )
 }
 
@@ -1694,6 +1721,7 @@ function FileLabel(props: { path?: string }) {
 function InlineTool(props: {
   icon: string
   iconColor?: RGBA
+  color?: RGBA
   complete: any
   pending: string
   spinner?: boolean
@@ -1720,7 +1748,8 @@ function InlineTool(props: {
     if (props.complete) return theme.textMuted
     return theme.text
   })
-  const icon = createMemo(() => props.iconColor ?? tint.tool)
+  const color = createMemo(() => props.color ?? toolColor(theme, props.part.tool))
+  const icon = createMemo(() => props.iconColor ?? color())
 
   const error = createMemo(() => (props.part.state.status === "error" ? props.part.state.error : undefined))
 
@@ -1738,7 +1767,7 @@ function InlineTool(props: {
       marginTop={margin()}
       paddingLeft={2}
       customBorderChars={SplitBorder.customBorderChars}
-      borderColor={tint.tool}
+      borderColor={color()}
       onMouseOver={() => props.onClick && setHover(true)}
       onMouseOut={() => setHover(false)}
       onMouseUp={() => {
@@ -1773,18 +1802,11 @@ function InlineTool(props: {
           <Spinner color={fg()} children={props.children} />
         </Match>
         <Match when={true}>
-          <text paddingLeft={3} fg={fg()} attributes={denied() ? TextAttributes.STRIKETHROUGH : undefined}>
-            <Show
-              fallback={
-                <>
-                  <span style={{ fg: tint.think }}></span> {props.pending}
-                </>
-              }
-              when={props.complete}
-            >
+          <Show fallback={<Spinner color={fg()}>{props.pending}</Spinner>} when={props.complete}>
+            <text paddingLeft={3} fg={fg()} attributes={denied() ? TextAttributes.STRIKETHROUGH : undefined}>
               <span style={{ fg: icon() }}>{props.icon}</span> {props.children}
-            </Show>
-          </text>
+            </text>
+          </Show>
         </Match>
       </Switch>
       <Show when={error() && !denied()}>
@@ -1802,11 +1824,15 @@ function BlockTool(props: {
   onClick?: () => void
   part?: ToolPart
   spinner?: boolean
+  color?: RGBA
 }) {
   const { theme } = useTheme()
   const renderer = useRenderer()
   const [hover, setHover] = createSignal(false)
   const error = createMemo(() => (props.part?.state.status === "error" ? props.part.state.error : undefined))
+  const color = createMemo(
+    () => props.color ?? (props.part ? toolColor(theme, props.part.tool) : tone(theme, BLOCK_TONE.tool.default)),
+  )
   return (
     <box
       border={["left"]}
@@ -1817,7 +1843,7 @@ function BlockTool(props: {
       gap={1}
       backgroundColor={hover() ? theme.backgroundMenu : theme.backgroundPanel}
       customBorderChars={SplitBorder.customBorderChars}
-      borderColor={tint.tool}
+      borderColor={color()}
       onMouseOver={() => props.onClick && setHover(true)}
       onMouseOut={() => setHover(false)}
       onMouseUp={() => {
@@ -1830,7 +1856,7 @@ function BlockTool(props: {
         fallback={
           <text paddingLeft={3} fg={theme.textMuted}>
             <Show when={props.icon}>
-              <span style={{ fg: tint.tool }}>{props.icon}</span>{" "}
+              <span style={{ fg: color() }}>{props.icon}</span>{" "}
             </Show>
             {props.title}
           </text>
@@ -1896,7 +1922,7 @@ function Bash(props: ToolProps<typeof BashTool>) {
         >
           <box gap={1}>
             <text fg={theme.text}>
-              <span style={{ fg: tint.tool }}>{SHELL_MARK}</span> {props.input.command}
+              <span style={{ fg: toolColor(theme, props.part.tool) }}>{SHELL_MARK}</span> {props.input.command}
             </text>
             <Show when={output()}>
               <For each={limited()}>
@@ -1904,7 +1930,7 @@ function Bash(props: ToolProps<typeof BashTool>) {
                   <text fg={theme.text}>
                     <Show when={line.startsWith("$ ")} fallback={line}>
                       <>
-                        <span style={{ fg: tint.tool }}>{SHELL_MARK}</span> {line.slice(2)}
+                        <span style={{ fg: toolColor(theme, props.part.tool) }}>{SHELL_MARK}</span> {line.slice(2)}
                       </>
                     </Show>
                   </text>
@@ -2120,12 +2146,13 @@ function Task(props: ToolProps<typeof TaskTool>) {
 
     if (isRunning() && tools().length > 0) {
       // content[0] += ` · ${tools().length} toolcalls`
-      if (current()) content.push(` ${Locale.titlecase(current()!.tool)} ${(current()!.state as any).title}`)
-      else content.push(` ${tools().length} toolcalls`)
+      if (current())
+        content.push(`${STATUS_OFF_MARK} ${Locale.titlecase(current()!.tool)} ${(current()!.state as any).title}`)
+      else content.push(`${STATUS_OFF_MARK} ${tools().length} toolcalls`)
     }
 
     if (props.part.state.status === "completed") {
-      content.push(` ${tools().length} toolcalls · ${Locale.duration(duration())}`)
+      content.push(`${STATUS_ON_MARK} ${tools().length} toolcalls · ${Locale.duration(duration())}`)
     }
 
     return content.join("\n")
@@ -2163,7 +2190,6 @@ function Edit(props: ToolProps<typeof EditTool>) {
   const ft = createMemo(() => filetype(props.input.filePath))
 
   const diffContent = createMemo(() => props.metadata.diff)
-
   return (
     <Switch>
       <Match when={props.metadata.diff !== undefined}>
@@ -2177,7 +2203,7 @@ function Edit(props: ToolProps<typeof EditTool>) {
           text={"Edit " + normalizePath(props.input.filePath!)}
           part={props.part}
         >
-          <box backgroundColor={theme.diffContextBg}>
+          <box backgroundColor={theme.diffContextBg} marginRight={2}>
             <diff
               diff={diffContent()}
               view={view()}
@@ -2214,7 +2240,7 @@ function TodoWrite(props: ToolProps<typeof TodoWriteTool>) {
   return (
     <Switch>
       <Match when={props.metadata.todos?.length}>
-        <BlockTool title="# Todos" part={props.part}>
+        <BlockTool title="Todos" icon="" part={props.part}>
           <box>
             <For each={props.input.todos ?? []}>
               {(todo) => <TodoItem status={todo.status} content={todo.content} tone="tool" />}
@@ -2223,7 +2249,7 @@ function TodoWrite(props: ToolProps<typeof TodoWriteTool>) {
         </BlockTool>
       </Match>
       <Match when={true}>
-        <InlineTool icon={TOOL_MARK} pending="Updating todos..." complete={false} part={props.part}>
+        <InlineTool icon="" pending="Updating todos..." complete={false} part={props.part}>
           Updating todos...
         </InlineTool>
       </Match>
@@ -2298,10 +2324,10 @@ function Diagnostics(props: { diagnostics?: Record<string, Record<string, any>[]
   }
 
   const diagnosticLabel = (severity?: number) => {
-    if (severity === 2) return ""
-    if (severity === 3) return ""
-    if (severity === 4) return ""
-    return ""
+    if (severity === 2) return DIAG_WARN_MARK
+    if (severity === 3) return DIAG_INFO_MARK
+    if (severity === 4) return DIAG_HINT_MARK
+    return DIAG_ERROR_MARK
   }
 
   return (

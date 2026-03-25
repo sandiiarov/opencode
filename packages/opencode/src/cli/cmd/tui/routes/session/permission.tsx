@@ -16,14 +16,17 @@ import { Locale } from "@/util/locale"
 import { Global } from "@/global"
 import { useDialog } from "../../ui/dialog"
 import { useTuiConfig } from "../../context/tui-config"
-const TOOL_MARK = ""
-const SEARCH_MARK = ""
-const READ_MARK = ""
-const WRITE_MARK = ""
-const SHELL_MARK = ""
-const WARN_MARK = "󱈸"
-const FETCH_MARK = "󰖟"
-const TASK_MARK = ""
+import {
+  FETCH_MARK,
+  READ_MARK,
+  REFRESH_MARK,
+  SEARCH_MARK,
+  SHELL_MARK,
+  TASK_MARK,
+  TOOL_MARK,
+  WARN_MARK,
+  WRITE_MARK,
+} from "./icons"
 type PermissionStage = "permission" | "always" | "reject"
 
 function normalizePath(input?: string) {
@@ -69,7 +72,6 @@ function EditBody(props: { request: PermissionRequest }) {
   })
 
   const ft = createMemo(() => filetype(filepath()))
-
   return (
     <box flexDirection="column" gap={1}>
       <Show when={diff()}>
@@ -82,25 +84,27 @@ function EditBody(props: { request: PermissionRequest }) {
             },
           }}
         >
-          <diff
-            diff={diff()}
-            view={view()}
-            filetype={ft()}
-            syntaxStyle={syntax()}
-            showLineNumbers={true}
-            width="100%"
-            wrapMode="word"
-            fg={theme.text}
-            addedBg={theme.diffAddedBg}
-            removedBg={theme.diffRemovedBg}
-            contextBg={theme.diffContextBg}
-            addedSignColor={theme.diffHighlightAdded}
-            removedSignColor={theme.diffHighlightRemoved}
-            lineNumberFg={theme.diffLineNumber}
-            lineNumberBg={theme.diffContextBg}
-            addedLineNumberBg={theme.diffAddedLineNumberBg}
-            removedLineNumberBg={theme.diffRemovedLineNumberBg}
-          />
+          <box marginRight={2}>
+            <diff
+              diff={diff()}
+              view={view()}
+              filetype={ft()}
+              syntaxStyle={syntax()}
+              showLineNumbers={true}
+              width="100%"
+              wrapMode="word"
+              fg={theme.text}
+              addedBg={theme.diffAddedBg}
+              removedBg={theme.diffRemovedBg}
+              contextBg={theme.diffContextBg}
+              addedSignColor={theme.diffHighlightAdded}
+              removedSignColor={theme.diffHighlightRemoved}
+              lineNumberFg={theme.diffLineNumber}
+              lineNumberBg={theme.diffContextBg}
+              addedLineNumberBg={theme.diffAddedLineNumberBg}
+              removedLineNumberBg={theme.diffRemovedLineNumberBg}
+            />
+          </box>
         </scrollbox>
       </Show>
       <Show when={!diff()}>
@@ -397,7 +401,7 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
 
             if (permission === "doom_loop") {
               return {
-                icon: "",
+                icon: REFRESH_MARK,
                 title: "Continue after repeated failures",
                 body: (
                   <box paddingLeft={1}>
@@ -426,7 +430,7 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
                 <text fg={theme.warning}>{WARN_MARK}</text>
                 <text fg={theme.text}>Permission required</text>
               </box>
-              <box flexDirection="row" gap={1} paddingLeft={2} flexShrink={0}>
+              <box flexDirection="row" gap={1} flexShrink={0}>
                 <text fg={theme.textMuted} flexShrink={0}>
                   {current.icon}
                 </text>
