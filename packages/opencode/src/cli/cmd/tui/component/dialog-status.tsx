@@ -5,6 +5,7 @@ import { useDialog } from "@tui/ui/dialog"
 import { useSync } from "@tui/context/sync"
 import { For, Match, Switch, Show, createMemo } from "solid-js"
 import { lspcolor, lspicon } from "@tui/util/icon"
+import { STATUS_OFF_MARK, STATUS_ON_MARK } from "../icons"
 
 export type DialogStatusProps = {}
 
@@ -69,7 +70,7 @@ export function DialogStatus() {
                     )[item.status],
                   }}
                 >
-                  {item.status === "connected" ? "" : ""}
+                  {item.status === "connected" ? STATUS_ON_MARK : STATUS_OFF_MARK}
                 </text>
                 <text fg={theme.text} wrapMode="word">
                   <b>{key}</b>{" "}
@@ -107,7 +108,7 @@ export function DialogStatus() {
                     }[item.status],
                   }}
                 >
-                  {item.status === "connected" ? "" : ""}
+                  {item.status === "connected" ? STATUS_ON_MARK : STATUS_OFF_MARK}
                 </text>
                 <text fg={lspcolor(item.id)}>{lspicon(item.id)}</text>
                 <text fg={theme.text} wrapMode="word">
@@ -130,7 +131,7 @@ export function DialogStatus() {
                     fg: theme.success,
                   }}
                 >
-                  
+                  {STATUS_ON_MARK}
                 </text>
                 <text wrapMode="word" fg={theme.text}>
                   <b>{item.name}</b>
@@ -152,7 +153,7 @@ export function DialogStatus() {
                     fg: theme.success,
                   }}
                 >
-                  
+                  {STATUS_ON_MARK}
                 </text>
                 <text wrapMode="word" fg={theme.text}>
                   <b>{item.name}</b>

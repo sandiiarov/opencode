@@ -1,4 +1,5 @@
 import { useTheme } from "../context/theme"
+import { TODO_DONE_MARK, TODO_PENDING_MARK, TODO_PROGRESS_MARK } from "../icons"
 
 export interface TodoItemProps {
   status: string
@@ -11,7 +12,12 @@ export function TodoItem(props: TodoItemProps) {
   const { theme } = useTheme()
   const fg =
     props.status === "in_progress" ? theme.warning : props.status === "completed" ? theme.textMuted : theme.textMuted
-  const icon = props.status === "completed" ? "" : props.status === "in_progress" ? "" : ""
+  const icon =
+    props.status === "completed"
+      ? TODO_DONE_MARK
+      : props.status === "in_progress"
+        ? TODO_PROGRESS_MARK
+        : TODO_PENDING_MARK
 
   return (
     <box flexDirection="row" gap={0}>

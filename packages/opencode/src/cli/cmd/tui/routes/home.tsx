@@ -15,6 +15,7 @@ import { Installation } from "@/installation"
 import { useKV } from "../context/kv"
 import { useCommandDialog } from "../component/dialog-command"
 import { useLocal } from "../context/local"
+import { STATUS_OFF_MARK, STATUS_ON_MARK } from "../icons"
 
 // TODO: what is the best way to do this?
 let once = false
@@ -62,11 +63,11 @@ export function Home() {
         <text fg={theme.text}>
           <Switch>
             <Match when={mcpError()}>
-              <span style={{ fg: theme.error }}></span>
+              <span style={{ fg: theme.error }}>{STATUS_OFF_MARK}</span>
               <span style={{ fg: theme.textMuted }}>ctrl+x s</span>
             </Match>
             <Match when={true}>
-              <span style={{ fg: theme.success }}></span>
+              <span style={{ fg: theme.success }}>{STATUS_ON_MARK}</span>
               {Locale.pluralize(connectedMcpCount(), "{} mcp server", "{} mcp servers")}
             </Match>
           </Switch>

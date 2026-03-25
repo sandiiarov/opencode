@@ -6,6 +6,7 @@ import { useDirectory } from "../../context/directory"
 import { useConnected } from "../../component/dialog-model"
 import { createStore } from "solid-js/store"
 import { useRoute } from "../../context/route"
+import { WARN_MARK } from "../../icons"
 
 export function Footer() {
   const { theme } = useTheme()
@@ -63,7 +64,7 @@ export function Footer() {
           <Match when={connected()}>
             <Show when={permissions().length > 0}>
               <text fg={theme.warning}>
-                <span style={{ fg: theme.warning }}>󰀧</span> {permissions().length} Permission
+                <span style={{ fg: theme.warning }}>{WARN_MARK}</span> {permissions().length} Permission
                 {permissions().length > 1 ? "s" : ""}
               </text>
             </Show>

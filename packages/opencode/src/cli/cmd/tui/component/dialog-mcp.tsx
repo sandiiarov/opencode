@@ -7,6 +7,7 @@ import { useTheme } from "../context/theme"
 import { Keybind } from "@/util/keybind"
 import { TextAttributes } from "@opentui/core"
 import { useSDK } from "@tui/context/sdk"
+import { CHECK_MARK, DISABLED_MARK } from "../icons"
 
 function Status(props: { enabled: boolean; loading: boolean }) {
   const { theme } = useTheme()
@@ -14,9 +15,9 @@ function Status(props: { enabled: boolean; loading: boolean }) {
     return <span style={{ fg: theme.textMuted }}>⋯ Loading</span>
   }
   if (props.enabled) {
-    return <span style={{ fg: theme.success, attributes: TextAttributes.BOLD }}>󰧖 Enabled</span>
+    return <span style={{ fg: theme.success, attributes: TextAttributes.BOLD }}>{CHECK_MARK} Enabled</span>
   }
-  return <span style={{ fg: theme.textMuted }}>󰅗 Disabled</span>
+  return <span style={{ fg: theme.textMuted }}>{DISABLED_MARK} Disabled</span>
 }
 
 export function DialogMcp() {

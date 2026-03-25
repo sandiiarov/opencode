@@ -8,14 +8,18 @@ import { useDirectory } from "../../context/directory"
 import { useKV } from "../../context/kv"
 import { TodoItem } from "../../component/todo-item"
 import { langcolor, lspcolor, lspicon, pathicon } from "@tui/util/icon"
+import {
+  CHEVRON_DOWN,
+  CHEVRON_RIGHT,
+  CONTEXT_ICON,
+  COST_MARK,
+  STATUS_OFF_MARK,
+  STATUS_ON_MARK,
+  TOKEN_MARK,
+} from "../../icons"
 
 const sidebar = 42
 const barw = sidebar - 5
-
-const contextIcon = {
-  empty: { start: "", body: "", end: "" },
-  fill: { start: "", body: "", end: "" },
-}
 
 const contextColor = (theme: ReturnType<typeof useTheme>["theme"], n?: number | null) => {
   if (n == null) return theme.textMuted
@@ -26,15 +30,18 @@ const contextColor = (theme: ReturnType<typeof useTheme>["theme"], n?: number | 
 
 const progress = (n?: number | null, w = 18) => {
   if (w <= 0) return { fill: "", empty: "" }
-  if (w === 1) return n ? { fill: contextIcon.fill.end, empty: "" } : { fill: "", empty: contextIcon.empty.end }
+  if (w === 1) return n ? { fill: CONTEXT_ICON.fill.end, empty: "" } : { fill: "", empty: CONTEXT_ICON.empty.end }
   const fill = n == null ? 0 : Math.max(0, Math.min(w, Math.round((n / 100) * w)))
   if (fill <= 0)
-    return { fill: "", empty: contextIcon.empty.start + contextIcon.empty.body.repeat(w - 2) + contextIcon.empty.end }
+    return {
+      fill: "",
+      empty: CONTEXT_ICON.empty.start + CONTEXT_ICON.empty.body.repeat(w - 2) + CONTEXT_ICON.empty.end,
+    }
   if (fill >= w)
-    return { fill: contextIcon.fill.start + contextIcon.fill.body.repeat(w - 2) + contextIcon.fill.end, empty: "" }
+    return { fill: CONTEXT_ICON.fill.start + CONTEXT_ICON.fill.body.repeat(w - 2) + CONTEXT_ICON.fill.end, empty: "" }
   return {
-    fill: contextIcon.fill.start + contextIcon.fill.body.repeat(fill - 1),
-    empty: contextIcon.empty.body.repeat(w - fill - 1) + contextIcon.empty.end,
+    fill: CONTEXT_ICON.fill.start + CONTEXT_ICON.fill.body.repeat(fill - 1),
+    empty: CONTEXT_ICON.empty.body.repeat(w - fill - 1) + CONTEXT_ICON.empty.end,
   }
 }
 
@@ -130,8 +137,12 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
               <text fg={theme.text}>
                 <b>Context</b>
               </text>
-              <text fg={theme.text}> {context()?.tokens ?? 0}</text>
-              <text fg={theme.text}> {cost().replace(/^[^\d-]+/, "")}</text>
+              <text fg={theme.text}>
+                {TOKEN_MARK} {context()?.tokens ?? 0}
+              </text>
+              <text fg={theme.text}>
+                {COST_MARK} {cost().replace(/^[^\d-]+/, "")}
+              </text>
               <text fg={contextFg()}>{bar().fill + bar().empty}</text>
             </box>
             <Show when={mcpEntries().length > 0}>
@@ -142,7 +153,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
                   onMouseDown={() => mcpEntries().length > 2 && setExpanded("mcp", !expanded.mcp)}
                 >
                   <Show when={mcpEntries().length > 2}>
-                    <text fg={theme.text}>{expanded.mcp ? "" : ""}</text>
+                    <text fg={theme.text}>{expanded.mcp ? CHEVRON_DOWN : CHEVRON_RIGHT}</text>
                   </Show>
                   <text fg={theme.text}>
                     <b>MCP</b>
@@ -173,7 +184,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
                             )[item.status],
                           }}
                         >
-                          {item.status === "connected" ? "" : ""}
+                          {item.status === "connected" ? STATUS_ON_MARK : STATUS_OFF_MARK}
                         </text>
                         <text fg={theme.text} wrapMode="word">
                           {key}{" "}
@@ -202,7 +213,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
                 onMouseDown={() => sync.data.lsp.length > 2 && setExpanded("lsp", !expanded.lsp)}
               >
                 <Show when={sync.data.lsp.length > 2}>
-                  <text fg={theme.text}>{expanded.lsp ? "" : ""}</text>
+                  <text fg={theme.text}>{expanded.lsp ? CHEVRON_DOWN : CHEVRON_RIGHT}</text>
                 </Show>
                 <text fg={theme.text}>
                   <b>LSP</b>
@@ -228,11 +239,10 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
                           }[item.status],
                         }}
                       >
-                        {item.status === "connected" ? "" : ""}
+                        {item.status === "connected" ? STATUS_ON_MARK : STATUS_OFF_MARK}
                       </text>
-                      <text fg={lspcolor(item.id)}>{lspicon(item.id)}</text>
-                      <text fg={theme.textMuted}>
-                        {item.id} {item.root}
+                      <text fg={theme.textMuted} wrapMode="none">
+                        <span style={{ fg: lspcolor(item.id) }}>{lspicon(item.id)}</span> {item.id} {item.root}
                       </text>
                     </box>
                   )}
@@ -247,7 +257,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
                   onMouseDown={() => todo().length > 2 && setExpanded("todo", !expanded.todo)}
                 >
                   <Show when={todo().length > 2}>
-                    <text fg={theme.text}>{expanded.todo ? "" : ""}</text>
+                    <text fg={theme.text}>{expanded.todo ? CHEVRON_DOWN : CHEVRON_RIGHT}</text>
                   </Show>
                   <text fg={theme.text}>
                     <b>Todo</b>
@@ -268,7 +278,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
                   onMouseDown={() => diff().length > 2 && setExpanded("diff", !expanded.diff)}
                 >
                   <Show when={diff().length > 2}>
-                    <text fg={theme.text}>{expanded.diff ? "" : ""}</text>
+                    <text fg={theme.text}>{expanded.diff ? CHEVRON_DOWN : CHEVRON_RIGHT}</text>
                   </Show>
                   <text fg={theme.text}>
                     <b>Modified Files</b>
@@ -344,7 +354,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
             <span style={{ fg: theme.text }}>{directory().split("/").at(-1)}</span>
           </text>
           <text fg={theme.textMuted}>
-            <span style={{ fg: theme.success }}></span>
+            <span style={{ fg: theme.success }}>{STATUS_ON_MARK}</span>
             <span style={{ fg: theme.text }}>
               <b>Code</b>
             </span>{" "}

@@ -1,0 +1,32 @@
+export const TOOL_MARK = ""
+export const META_MARK = "󰿦"
+export const SEARCH_MARK = ""
+export const READ_MARK = ""
+export const WRITE_MARK = ""
+export const SHELL_MARK = ""
+export const WARN_MARK = "󱈸"
+export const FETCH_MARK = "󰖟"
+export const TASK_MARK = ""
+export const SEP_MARK = ""
+export const REFRESH_MARK = ""
+export const PENDING_MARK = ""
+export const CHEVRON_DOWN = ""
+export const CHEVRON_RIGHT = ""
+export const STATUS_ON_MARK = ""
+export const STATUS_OFF_MARK = ""
+export const TOKEN_MARK = ""
+export const COST_MARK = ""
+export const CHECK_MARK = "󰧖"
+export const DISABLED_MARK = "󰅗"
+export const TODO_DONE_MARK = ""
+export const TODO_PROGRESS_MARK = ""
+export const TODO_PENDING_MARK = ""
+export const DIAG_WARN_MARK = ""
+export const DIAG_INFO_MARK = ""
+export const DIAG_HINT_MARK = ""
+export const DIAG_ERROR_MARK = ""
+export const LOADING_FRAMES = ["", "", "", "", "", ""] as const
+export const CONTEXT_ICON = {
+  empty: { start: "", body: "", end: "" },
+  fill: { start: "", body: "", end: "" },
+} as const

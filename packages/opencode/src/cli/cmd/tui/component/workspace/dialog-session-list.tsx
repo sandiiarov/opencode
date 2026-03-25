@@ -79,7 +79,7 @@ export function DialogSessionList(props: { workspaceID?: string; localOnly?: boo
           value: x.id,
           category,
           footer: Locale.time(x.time.updated),
-          gutter: isWorking ? <Spinner /> : undefined,
+          gutter: isWorking ? <Spinner color={theme.textMuted} /> : undefined,
         }
       })
   })

@@ -9,6 +9,7 @@ import { useSDK } from "../../context/sdk"
 import { SplitBorder } from "../../component/border"
 import { useTextareaKeybindings } from "../../component/textarea-keybindings"
 import { useDialog } from "../../ui/dialog"
+import { CHECK_MARK } from "../../icons"
 
 export function QuestionPrompt(props: { request: QuestionRequest }) {
   const sdk = useSDK()
@@ -338,11 +339,11 @@ export function QuestionPrompt(props: { request: QuestionRequest }) {
                         </box>
                         <box backgroundColor={active() ? theme.backgroundElement : undefined}>
                           <text fg={active() ? theme.secondary : picked() ? theme.success : theme.text}>
-                            {multi() ? `[${picked() ? "󰧖" : " "}] ${opt.label}` : opt.label}
+                            {multi() ? `[${picked() ? CHECK_MARK : " "}] ${opt.label}` : opt.label}
                           </text>
                         </box>
                         <Show when={!multi()}>
-                          <text fg={theme.success}>{picked() ? "󰧖" : ""}</text>
+                          <text fg={theme.success}>{picked() ? CHECK_MARK : ""}</text>
                         </Show>
                       </box>
 
@@ -367,12 +368,14 @@ export function QuestionPrompt(props: { request: QuestionRequest }) {
                     </box>
                     <box backgroundColor={other() ? theme.backgroundElement : undefined}>
                       <text fg={other() ? theme.secondary : customPicked() ? theme.success : theme.text}>
-                        {multi() ? `[${customPicked() ? "󰧖" : " "}] Type your own answer` : "Type your own answer"}
+                        {multi()
+                          ? `[${customPicked() ? CHECK_MARK : " "}] Type your own answer`
+                          : "Type your own answer"}
                       </text>
                     </box>
 
                     <Show when={!multi()}>
-                      <text fg={theme.success}>{customPicked() ? "󰧖" : ""}</text>
+                      <text fg={theme.success}>{customPicked() ? CHECK_MARK : ""}</text>
                     </Show>
                   </box>
                   <Show when={store.editing}>
