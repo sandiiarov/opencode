@@ -8,18 +8,10 @@ import { useDirectory } from "../../context/directory"
 import { useKV } from "../../context/kv"
 import { TodoItem } from "../../component/todo-item"
 import { langcolor, lspcolor, lspicon, pathicon } from "@tui/util/icon"
-import {
-  CHEVRON_DOWN,
-  CHEVRON_RIGHT,
-  CONTEXT_ICON,
-  COST_MARK,
-  STATUS_OFF_MARK,
-  STATUS_ON_MARK,
-  TOKEN_MARK,
-} from "../../icons"
+import { CHEVRON_DOWN, CHEVRON_RIGHT, COST_MARK, STATUS_OFF_MARK, STATUS_ON_MARK, TOKEN_MARK } from "../../icons"
 
 const sidebar = 42
-const barw = sidebar - 5
+const barw = 20
 
 const contextColor = (theme: ReturnType<typeof useTheme>["theme"], n?: number | null) => {
   if (n == null) return theme.textMuted
@@ -28,21 +20,10 @@ const contextColor = (theme: ReturnType<typeof useTheme>["theme"], n?: number | 
   return theme.success
 }
 
-const progress = (n?: number | null, w = 18) => {
-  if (w <= 0) return { fill: "", empty: "" }
-  if (w === 1) return n ? { fill: CONTEXT_ICON.fill.end, empty: "" } : { fill: "", empty: CONTEXT_ICON.empty.end }
-  const fill = n == null ? 0 : Math.max(0, Math.min(w, Math.round((n / 100) * w)))
-  if (fill <= 0)
-    return {
-      fill: "",
-      empty: CONTEXT_ICON.empty.start + CONTEXT_ICON.empty.body.repeat(w - 2) + CONTEXT_ICON.empty.end,
-    }
-  if (fill >= w)
-    return { fill: CONTEXT_ICON.fill.start + CONTEXT_ICON.fill.body.repeat(w - 2) + CONTEXT_ICON.fill.end, empty: "" }
-  return {
-    fill: CONTEXT_ICON.fill.start + CONTEXT_ICON.fill.body.repeat(fill - 1),
-    empty: CONTEXT_ICON.empty.body.repeat(w - fill - 1) + CONTEXT_ICON.empty.end,
-  }
+const progress = (n?: number | null, w = barw) => {
+  const pct = n == null ? 0 : Math.max(0, Math.min(100, Math.round(n)))
+  const fill = Math.round(pct / 5)
+  return `${"█".repeat(fill)}${"░".repeat(w - fill)} ${pct}%`
 }
 
 export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
@@ -93,7 +74,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
     }
   })
   const contextFg = createMemo(() => contextColor(theme, context()?.percentage))
-  const bar = createMemo(() => progress(context()?.percentage, barw))
+  const bar = createMemo(() => progress(context()?.percentage))
 
   const directory = useDirectory()
   const kv = useKV()
@@ -143,7 +124,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
               <text fg={theme.text}>
                 {COST_MARK} {cost().replace(/^[^\d-]+/, "")}
               </text>
-              <text fg={contextFg()}>{bar().fill + bar().empty}</text>
+              <text fg={contextFg()}>{bar()}</text>
             </box>
             <Show when={mcpEntries().length > 0}>
               <box>
