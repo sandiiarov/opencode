@@ -19,7 +19,17 @@ import { useSync } from "@tui/context/sync"
 import { SplitBorder } from "@tui/component/border"
 import { Spinner } from "@tui/component/spinner"
 import { selectedForeground, useTheme } from "@tui/context/theme"
-import { FETCH_MARK, META_MARK, READ_MARK, SEARCH_MARK, SEP_MARK, SHELL_MARK, TOOL_MARK, WRITE_MARK } from "./icons"
+import {
+  FETCH_MARK,
+  META_MARK,
+  READ_MARK,
+  SEARCH_MARK,
+  SEP_MARK,
+  SHELL_MARK,
+  TASK_MARK,
+  TOOL_MARK,
+  WRITE_MARK,
+} from "./icons"
 import {
   DIAG_ERROR_MARK,
   DIAG_HINT_MARK,
@@ -2160,7 +2170,7 @@ function Task(props: ToolProps<typeof TaskTool>) {
 
   return (
     <InlineTool
-      icon="┃"
+      icon={TASK_MARK}
       spinner={isRunning()}
       complete={props.input.description}
       pending="Delegating..."
