@@ -31,7 +31,7 @@ const contextColor = (theme: ReturnType<typeof useTheme>["theme"], n?: number | 
 const progress = (n?: number | null, w = barw) => {
   const pct = n == null ? 0 : Math.max(0, Math.min(100, Math.round(n)))
   const fill = Math.round(pct / (100 / w))
-  return `${"█".repeat(fill)}${"░".repeat(w - fill)} ${pct}%`
+  return `${"█".repeat(fill)}${"░".repeat(w - fill)} ${pct}󰏰`
 }
 
 export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
