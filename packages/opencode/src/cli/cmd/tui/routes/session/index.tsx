@@ -1702,7 +1702,7 @@ function GenericTool(props: ToolProps<any>) {
 function ToolTitle(props: { fallback: string; when: any; icon: string; children: JSX.Element }) {
   const { theme } = useTheme()
   return (
-    <Show fallback={<Spinner color={theme.textMuted}>{props.fallback}</Spinner>} when={props.when}>
+    <Show fallback={<Spinner color={theme.text}>{props.fallback}</Spinner>} when={props.when}>
       <text paddingLeft={3} fg={theme.text}>
         <span style={{ bold: true }}>{props.icon}</span> {props.children}
       </text>
@@ -1799,10 +1799,10 @@ function InlineTool(props: {
     >
       <Switch>
         <Match when={props.spinner}>
-          <Spinner color={fg()} children={props.children} />
+          <Spinner color={icon()} children={props.children} />
         </Match>
         <Match when={true}>
-          <Show fallback={<Spinner color={fg()}>{props.pending}</Spinner>} when={props.complete}>
+          <Show fallback={<Spinner color={icon()}>{props.pending}</Spinner>} when={props.complete}>
             <text paddingLeft={3} fg={fg()} attributes={denied() ? TextAttributes.STRIKETHROUGH : undefined}>
               <span style={{ fg: icon() }}>{props.icon}</span> {props.children}
             </text>
@@ -1862,7 +1862,7 @@ function BlockTool(props: {
           </text>
         }
       >
-        <Spinner color={theme.textMuted}>{props.text ?? (typeof props.title === "string" ? props.title : "")}</Spinner>
+        <Spinner color={color()}>{props.text ?? (typeof props.title === "string" ? props.title : "")}</Spinner>
       </Show>
       {props.children}
       <Show when={error()}>
