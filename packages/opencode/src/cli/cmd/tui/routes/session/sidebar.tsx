@@ -8,10 +8,18 @@ import { useDirectory } from "../../context/directory"
 import { useKV } from "../../context/kv"
 import { TodoItem } from "../../component/todo-item"
 import { langcolor, lspcolor, lspicon, pathicon } from "@tui/util/icon"
-import { CHEVRON_DOWN, CHEVRON_RIGHT, COST_MARK, STATUS_OFF_MARK, STATUS_ON_MARK, TOKEN_MARK } from "../../icons"
+import {
+  CHEVRON_DOWN,
+  CHEVRON_RIGHT,
+  COST_MARK,
+  SEP_MARK,
+  STATUS_OFF_MARK,
+  STATUS_ON_MARK,
+  TOKEN_MARK,
+} from "../../icons"
 
 const sidebar = 42
-const barw = 20
+const barw = 10
 
 const contextColor = (theme: ReturnType<typeof useTheme>["theme"], n?: number | null) => {
   if (n == null) return theme.textMuted
@@ -22,7 +30,7 @@ const contextColor = (theme: ReturnType<typeof useTheme>["theme"], n?: number | 
 
 const progress = (n?: number | null, w = barw) => {
   const pct = n == null ? 0 : Math.max(0, Math.min(100, Math.round(n)))
-  const fill = Math.round(pct / 5)
+  const fill = Math.round(pct / (100 / w))
   return `${"█".repeat(fill)}${"░".repeat(w - fill)} ${pct}%`
 }
 
@@ -118,13 +126,17 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
               <text fg={theme.text}>
                 <b>Context</b>
               </text>
-              <text fg={theme.text}>
-                {TOKEN_MARK} {context()?.tokens ?? 0}
-              </text>
-              <text fg={theme.text}>
-                {COST_MARK} {cost().replace(/^[^\d-]+/, "")}
-              </text>
-              <text fg={contextFg()}>{bar()}</text>
+              <box flexDirection="row" gap={1}>
+                <text fg={theme.text}>
+                  {TOKEN_MARK} {context()?.tokens ?? 0}
+                </text>
+                <text fg={theme.textMuted}>{SEP_MARK}</text>
+                <text fg={theme.text}>
+                  {COST_MARK} {cost().replace(/^[^\d-]+/, "")}
+                </text>
+                <text fg={theme.textMuted}>{SEP_MARK}</text>
+                <text fg={contextFg()}>{bar()}</text>
+              </box>
             </box>
             <Show when={mcpEntries().length > 0}>
               <box>
