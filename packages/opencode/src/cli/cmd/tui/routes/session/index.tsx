@@ -1812,7 +1812,7 @@ function InlineTool(props: {
           <Spinner color={icon()} children={props.children} />
         </Match>
         <Match when={true}>
-          <Show fallback={<Spinner color={icon()}>{props.pending}</Spinner>} when={props.complete}>
+          <Show fallback={<Spinner color={fg()}>{props.pending}</Spinner>} when={props.complete || error()}>
             <text paddingLeft={3} fg={fg()} attributes={denied() ? TextAttributes.STRIKETHROUGH : undefined}>
               <span style={{ fg: icon() }}>{props.icon}</span> {props.children}
             </text>
