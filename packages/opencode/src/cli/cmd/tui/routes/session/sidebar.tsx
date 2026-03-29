@@ -95,7 +95,6 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
   return (
     <Show when={session()}>
       <box
-        backgroundColor={theme.backgroundPanel}
         width={sidebar}
         height="100%"
         paddingTop={1}
@@ -347,9 +346,9 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
             <span style={{ fg: theme.text }}>{directory().split("/").at(-1)}</span>
           </text>
           <text fg={theme.textMuted}>
-            <span style={{ fg: theme.success }}>{STATUS_ON_MARK}</span>
+            <span style={{ fg: theme.success }}>{STATUS_ON_MARK}</span>{" "}
             <span style={{ fg: theme.text }}>
-              <b>Code</b>
+              <b>Opencode</b>
             </span>{" "}
             <span>{Installation.VERSION}</span>
           </text>
