@@ -11,6 +11,7 @@ import { Process } from "../../util/process"
 import { EOL } from "os"
 import path from "path"
 import { which } from "../../util/which"
+import { formatTranscript } from "./tui/util/transcript"
 
 function pagerCmd(): string[] {
   const lessOptions = ["-R", "-S"]
@@ -42,7 +43,7 @@ function pagerCmd(): string[] {
 export const SessionCommand = cmd({
   command: "session",
   describe: "manage sessions",
-  builder: (yargs: Argv) => yargs.command(SessionListCommand).command(SessionDeleteCommand).demandCommand(),
+  builder: (yargs: Argv) => yargs.command(SessionListCommand).command(SessionTranscriptCommand).command(SessionDeleteCommand).demandCommand(),
   async handler() {},
 })
 
@@ -123,6 +124,66 @@ export const SessionListCommand = cmd({
       } else {
         console.log(output)
       }
+    })
+  },
+})
+
+export const SessionTranscriptCommand = cmd({
+  command: "transcript [sessionID]",
+  describe: "print a session transcript as markdown",
+  builder: (yargs: Argv) => {
+    return yargs
+      .positional("sessionID", {
+        describe: "session ID to render (defaults to latest root session)",
+        type: "string",
+      })
+      .option("thinking", {
+        describe: "include assistant thinking blocks",
+        type: "boolean",
+        default: true,
+      })
+      .option("tool-details", {
+        describe: "include tool inputs and outputs",
+        type: "boolean",
+        default: true,
+      })
+      .option("assistant-metadata", {
+        describe: "include assistant model and timing metadata",
+        type: "boolean",
+        default: true,
+      })
+  },
+  handler: async (args) => {
+    await bootstrap(process.cwd(), async () => {
+      const id = await (async () => {
+        if (args.sessionID) return SessionID.make(args.sessionID)
+        const list = [...Session.list({ roots: true, limit: 1 })]
+        return list[0]?.id
+      })()
+      if (!id) {
+        UI.error("No sessions found")
+        process.exit(1)
+      }
+      const info = await Session.get(id).catch(() => undefined)
+      if (!info) {
+        UI.error(`Session not found: ${args.sessionID ?? id}`)
+        process.exit(1)
+      }
+      const msgs = await Session.messages({ sessionID: info.id })
+      const text = formatTranscript(
+        info,
+        msgs.map((msg) => ({
+          info: msg.info,
+          parts: msg.parts,
+        })),
+        {
+          thinking: args.thinking,
+          toolDetails: args.toolDetails,
+          assistantMetadata: args.assistantMetadata,
+        },
+      )
+      process.stdout.write(text)
+      process.stdout.write(EOL)
     })
   },
 })
