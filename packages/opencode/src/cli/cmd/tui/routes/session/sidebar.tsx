@@ -9,9 +9,11 @@ import { useKV } from "../../context/kv"
 import { TodoItem } from "../../component/todo-item"
 import { langcolor, lspcolor, lspicon, pathicon } from "@tui/util/icon"
 import {
+  BRANCH_MARK,
   CHEVRON_DOWN,
   CHEVRON_RIGHT,
   COST_MARK,
+  FOLDER_MARK,
   SEP_MARK,
   STATUS_OFF_MARK,
   STATUS_ON_MARK,
@@ -341,10 +343,19 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
               </box>
             </box>
           </Show>
-          <text>
-            <span style={{ fg: theme.textMuted }}>{directory().split("/").slice(0, -1).join("/")}/</span>
-            <span style={{ fg: theme.text }}>{directory().split("/").at(-1)}</span>
-          </text>
+          <box>
+            <text>
+              <span style={{ fg: theme.textMuted }}>{FOLDER_MARK} </span>
+              <span style={{ fg: theme.textMuted }}>{directory().split(":")[0].split("/").slice(0, -1).join("/")}/</span>
+              <span style={{ fg: theme.text }}>{directory().split(":")[0].split("/").at(-1)}</span>
+            </text>
+            <Show when={sync.data.vcs?.branch}>
+              <text>
+                <span style={{ fg: theme.textMuted }}>{BRANCH_MARK} </span>
+                <span style={{ fg: theme.text }}>{sync.data.vcs?.branch}</span>
+              </text>
+            </Show>
+          </box>
           <text fg={theme.textMuted}>
             <span style={{ fg: theme.success }}>{STATUS_ON_MARK}</span>{" "}
             <span style={{ fg: theme.text }}>
