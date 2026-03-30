@@ -1,4 +1,5 @@
 export {
+  EDIT_MARK,
   FETCH_MARK,
   META_MARK,
   READ_MARK,
@@ -10,4 +11,5 @@ export {
   TOOL_MARK,
   WARN_MARK,
   WRITE_MARK,
+  EXTERNAL_DIR_MARK,
 } from "../../icons"
