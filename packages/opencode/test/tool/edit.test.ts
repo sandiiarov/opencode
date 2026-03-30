@@ -377,6 +377,106 @@ describe("tool.edit", () => {
     })
   })
 
+  test("trims adjacent duplicate lines from replace edits", async () => {
+    await using tmp = await tmpdir()
+    const file = path.join(tmp.path, "file.txt")
+    await fs.writeFile(
+      file,
+      [
+        'import { keep } from "./keep"',
+        "// remove one",
+        "// remove two",
+        "// remove three",
+        "// Explicitly exit to avoid any hanging subprocesses.",
+        "process.exit()",
+        "",
+      ].join("\n"),
+      "utf-8",
+    )
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        await FileTime.read(ctx.sessionID, file)
+        const edit = await EditTool.init()
+
+        await edit.execute(
+          {
+            filePath: file,
+            edits: [
+              {
+                op: "replace",
+                pos: ref(2, "// remove one"),
+                end: ref(4, "// remove three"),
+                lines: ["// Explicitly exit to avoid any hanging subprocesses."],
+              },
+            ],
+          },
+          ctx,
+        )
+
+        expect(await fs.readFile(file, "utf-8")).toBe(
+          [
+            'import { keep } from "./keep"',
+            "// Explicitly exit to avoid any hanging subprocesses.",
+            "process.exit()",
+            "",
+          ].join("\n"),
+        )
+      },
+    })
+  })
+
+  test("trims leading adjacent duplicate lines from replace edits", async () => {
+    await using tmp = await tmpdir()
+    const file = path.join(tmp.path, "file.txt")
+    await fs.writeFile(
+      file,
+      [
+        'import { keep } from "./keep"',
+        "// Explicitly exit to avoid any hanging subprocesses.",
+        "// remove one",
+        "// remove two",
+        "// remove three",
+        "process.exit()",
+        "",
+      ].join("\n"),
+      "utf-8",
+    )
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        await FileTime.read(ctx.sessionID, file)
+        const edit = await EditTool.init()
+
+        await edit.execute(
+          {
+            filePath: file,
+            edits: [
+              {
+                op: "replace",
+                pos: ref(3, "// remove one"),
+                end: ref(5, "// remove three"),
+                lines: ["// Explicitly exit to avoid any hanging subprocesses."],
+              },
+            ],
+          },
+          ctx,
+        )
+
+        expect(await fs.readFile(file, "utf-8")).toBe(
+          [
+            'import { keep } from "./keep"',
+            "// Explicitly exit to avoid any hanging subprocesses.",
+            "process.exit()",
+            "",
+          ].join("\n"),
+        )
+      },
+    })
+  })
+
   test("renders hashline output back to numbered lines for users", () => {
     const text = `<content>\n1#${computeLineHash(1, "alpha")}|alpha\n>>> 2#${computeLineHash(2, "beta")}|beta\nERROR [2#${computeLineHash(2, "beta")}:3] bad\n</content>`
     expect(renderNumberedOutput(text)).toContain("1: alpha")

@@ -249,8 +249,8 @@ export function apply(content: string, edits: Edit[]) {
       throw new Error(`Invalid range: start line ${start} cannot be greater than end line ${end}`)
     }
     let add = clean(edit.lines)
-    if (start > 1 && add.length > end - start + 1 && canTrimFirst(lines[start - 2] ?? "", add)) add = add.slice(1)
-    if (end < lines.length && add.length > end - start + 1 && canTrimLast(lines[end] ?? "", add)) add = add.slice(0, -1)
+    if (start > 1 && canTrimFirst(lines[start - 2] ?? "", add)) add = add.slice(1)
+    if (end < lines.length && canTrimLast(lines[end] ?? "", add)) add = add.slice(0, -1)
     if (add.length) add[0] = indent(lines[start - 1] ?? "", add[0])
     lines.splice(start - 1, end - start + 1, ...add)
   }
