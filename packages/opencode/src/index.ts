@@ -6,7 +6,6 @@ import { Log } from "./util/log"
 import { ConsoleCommand } from "./cli/cmd/account"
 import { ProvidersCommand } from "./cli/cmd/providers"
 import { AgentCommand } from "./cli/cmd/agent"
-import { UpgradeCommand } from "./cli/cmd/upgrade"
 import { UninstallCommand } from "./cli/cmd/uninstall"
 import { ModelsCommand } from "./cli/cmd/models"
 import { UI } from "./cli/ui"
@@ -19,7 +18,6 @@ import { Filesystem } from "./util/filesystem"
 import { DebugCommand } from "./cli/cmd/debug"
 import { StatsCommand } from "./cli/cmd/stats"
 import { McpCommand } from "./cli/cmd/mcp"
-import { GithubCommand } from "./cli/cmd/github"
 import { ExportCommand } from "./cli/cmd/export"
 import { ImportCommand } from "./cli/cmd/import"
 import { AttachCommand } from "./cli/cmd/tui/attach"
@@ -133,7 +131,6 @@ let cli = yargs(hideBin(process.argv))
   .command(ConsoleCommand)
   .command(ProvidersCommand)
   .command(AgentCommand)
-  .command(UpgradeCommand)
   .command(UninstallCommand)
   .command(ServeCommand)
   .command(WebCommand)
@@ -141,7 +138,6 @@ let cli = yargs(hideBin(process.argv))
   .command(StatsCommand)
   .command(ExportCommand)
   .command(ImportCommand)
-  .command(GithubCommand)
   .command(PrCommand)
   .command(SessionCommand)
   .command(DbCommand)

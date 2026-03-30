@@ -1185,33 +1185,6 @@ test("managed settings override user settings", async () => {
   })
 })
 
-test("managed settings override project settings", async () => {
-  await using tmp = await tmpdir({
-    init: async (dir) => {
-      await writeConfig(dir, {
-        $schema: "https://opencode.ai/config.json",
-        autoupdate: true,
-        disabled_providers: [],
-      })
-    },
-  })
-
-  await writeManagedSettings({
-    $schema: "https://opencode.ai/config.json",
-    autoupdate: false,
-    disabled_providers: ["openai"],
-  })
-
-  await Instance.provide({
-    directory: tmp.path,
-    fn: async () => {
-      const config = await Config.get()
-      expect(config.autoupdate).toBe(false)
-      expect(config.disabled_providers).toEqual(["openai"])
-    },
-  })
-})
-
 test("missing managed settings file is not an error", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {

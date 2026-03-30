@@ -1,15 +1,16 @@
-# js
+# opencode
 
-To install dependencies:
+Core CLI and TUI package for the trimmed OpenCode repo.
+
+## Development
 
 ```bash
 bun install
+bun run dev
 ```
 
-To run:
+## Build
 
 ```bash
-bun run index.ts
+bun run build -- --single
 ```
-
-This project was created using `bun init` in bun v1.2.12. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.

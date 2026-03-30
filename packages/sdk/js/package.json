@@ -17,9 +17,6 @@
     "./v2/gen/client": "./src/v2/gen/client/index.ts",
     "./v2/server": "./src/v2/server.ts"
   },
-  "files": [
-    "dist"
-  ],
   "devDependencies": {
     "@hey-api/openapi-ts": "0.90.10",
     "@tsconfig/node22": "catalog:",

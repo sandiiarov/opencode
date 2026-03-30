@@ -31,7 +31,7 @@ Inspect the repository before you edit `AGENTS.md`.
 At minimum, check:
 - `package.json` files and workspace tooling for build, test, lint, typecheck, dev, and single-test commands
 - existing `AGENTS.md` files near `${path}`
-- `.cursor/rules/`, `.cursorrules`, and `.github/copilot-instructions.md` if present
+- `.cursor/rules/`, `.cursorrules`, and `.copilot-instructions.md` if present
 - repo config that reveals non-obvious workflows, boundaries, codegen, migrations, or package-manager requirements
 
 If the repo is a monorepo, focus on instructions that are valid from `${path}` and clearly call out package-specific commands when needed.

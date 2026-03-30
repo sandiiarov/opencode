@@ -4,20 +4,6 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}` | (string & {})
 }
 
-export type EventInstallationUpdated = {
-  type: "installation.updated"
-  properties: {
-    version: string
-  }
-}
-
-export type EventInstallationUpdateAvailable = {
-  type: "installation.update-available"
-  properties: {
-    version: string
-  }
-}
-
 export type Project = {
   id: string
   worktree: string
@@ -958,8 +944,6 @@ export type EventWorktreeFailed = {
 }
 
 export type Event =
-  | EventInstallationUpdated
-  | EventInstallationUpdateAvailable
   | EventProjectUpdated
   | EventServerInstanceDisposed
   | EventServerConnected
@@ -1355,10 +1339,6 @@ export type Config = {
    * @deprecated Use 'share' field instead. Share newly created sessions automatically
    */
   autoshare?: boolean
-  /**
-   * Automatically update to the latest version. Set to true to auto-update, false to disable, or 'notify' to show update notifications
-   */
-  autoupdate?: boolean | "notify"
   /**
    * Disable providers that are loaded automatically
    */
@@ -2029,41 +2009,6 @@ export type GlobalDisposeResponses = {
 }
 
 export type GlobalDisposeResponse = GlobalDisposeResponses[keyof GlobalDisposeResponses]
-
-export type GlobalUpgradeData = {
-  body?: {
-    target?: string
-  }
-  path?: never
-  query?: never
-  url: "/global/upgrade"
-}
-
-export type GlobalUpgradeErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-}
-
-export type GlobalUpgradeError = GlobalUpgradeErrors[keyof GlobalUpgradeErrors]
-
-export type GlobalUpgradeResponses = {
-  /**
-   * Upgrade result
-   */
-  200:
-    | {
-        success: true
-        version: string
-      }
-    | {
-        success: false
-        error: string
-      }
-}
-
-export type GlobalUpgradeResponse = GlobalUpgradeResponses[keyof GlobalUpgradeResponses]
 
 export type AuthRemoveData = {
   body?: never
