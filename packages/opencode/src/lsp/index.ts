@@ -1,3 +1,4 @@
+import { computeLineHash } from "@/tool/hashline"
 import { BusEvent } from "@/bus/bus-event"
 import { Bus } from "@/bus"
 import { Log } from "../util/log"
@@ -503,11 +504,15 @@ export namespace LSP {
       return ` Suggest: ${diagnostic.suggestions.join("; ")}`
     }
 
-    export function pretty(diagnostic: LSPClient.Diagnostic) {
+    function ref(diagnostic: LSPClient.Diagnostic, source?: string) {
       const line = diagnostic.range.start.line + 1
       const col = diagnostic.range.start.character + 1
+      if (source === undefined) return `[${line}:${col}]`
+      return `[${line}#${computeLineHash(line, source)}:${col}]`
+    }
 
-      return `${label(diagnostic)} [${line}:${col}] ${diagnostic.message}${suggestions(diagnostic)}`
+    export function pretty(diagnostic: LSPClient.Diagnostic, source?: string) {
+      return `${label(diagnostic)} ${ref(diagnostic, source)} ${diagnostic.message}${suggestions(diagnostic)}`
     }
   }
 }

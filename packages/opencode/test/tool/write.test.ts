@@ -1,10 +1,13 @@
-import { afterEach, describe, test, expect } from "bun:test"
+import { afterEach, describe, test, expect, spyOn } from "bun:test"
 import path from "path"
 import fs from "fs/promises"
 import { WriteTool } from "../../src/tool/write"
+import { EditTool } from "../../src/tool/edit"
+import { LSP } from "../../src/lsp"
 import { Instance } from "../../src/project/instance"
 import { tmpdir } from "../fixture/fixture"
 import { SessionID, MessageID } from "../../src/session/schema"
+import { computeLineHash, renderNumberedOutput } from "../../src/tool/hashline"
 
 const ctx = {
   sessionID: SessionID.make("ses_test-write-session"),
@@ -15,6 +18,16 @@ const ctx = {
   messages: [],
   metadata: () => {},
   ask: async () => {},
+}
+
+function lineRef(output: string, line: number) {
+  const body = output.includes("<content>") ? output.slice(output.indexOf("<content>") + 9) : output
+  const hit = body
+    .split("\n")
+    .map((item) => item.trimStart())
+    .find((item) => item.startsWith(`${line}#`) || item.startsWith(`>>> ${line}#`))
+  if (!hit) throw new Error(`Missing hashline ref for line ${line}`)
+  return hit.replace(/^>>>\s*/, "").split("|")[0]
 }
 
 afterEach(async () => {
@@ -123,6 +136,31 @@ describe("tool.write", () => {
       })
     })
 
+    test("allows overwrite with expectedVersion instead of a prior read", async () => {
+      await using tmp = await tmpdir()
+      const filepath = path.join(tmp.path, "existing.txt")
+      await fs.writeFile(filepath, "old content", "utf-8")
+
+      await Instance.provide({
+        directory: tmp.path,
+        fn: async () => {
+          const version = await import("../../src/file/time").then((x) => x.FileTime.version(filepath))
+          const write = await WriteTool.init()
+          const result = await write.execute(
+            {
+              filePath: filepath,
+              content: "new content",
+              expectedVersion: version,
+            },
+            ctx,
+          )
+
+          expect(result.metadata.version).not.toBe(version)
+          expect(await fs.readFile(filepath, "utf-8")).toBe("new content")
+        },
+      })
+    })
+
     test("returns diff in metadata for existing files", async () => {
       await using tmp = await tmpdir()
       const filepath = path.join(tmp.path, "file.txt")
@@ -146,6 +184,86 @@ describe("tool.write", () => {
           // Diff should be in metadata
           expect(result.metadata).toHaveProperty("filepath", filepath)
           expect(result.metadata).toHaveProperty("exists", true)
+        },
+      })
+    })
+
+    test("renders hashline diagnostic refs for agents and plain refs for users", async () => {
+      await using tmp = await tmpdir()
+      const filepath = path.join(tmp.path, "diag.ts")
+      const content = "alpha\nbeta\n"
+
+      const touch = spyOn(LSP, "touchFile").mockResolvedValue(undefined)
+      const diagnostics = spyOn(LSP, "diagnostics").mockResolvedValue({
+        [filepath]: [
+          {
+            range: {
+              start: { line: 1, character: 2 },
+              end: { line: 1, character: 4 },
+            },
+            message: "problem",
+            severity: 1,
+            source: "ts",
+          },
+        ],
+      })
+
+      try {
+        await Instance.provide({
+          directory: tmp.path,
+          fn: async () => {
+            const write = await WriteTool.init()
+            const result = await write.execute(
+              {
+                filePath: filepath,
+                content,
+              },
+              ctx,
+            )
+
+            expect(result.output).toContain(`ERROR [2#${computeLineHash(2, "beta")}:3] problem`)
+            expect(renderNumberedOutput(result.output)).toContain("ERROR [2:3] problem")
+          },
+        })
+      } finally {
+        touch.mockRestore()
+        diagnostics.mockRestore()
+      }
+    })
+
+    test("returns fresh anchors for follow-up edits", async () => {
+      await using tmp = await tmpdir()
+      const filepath = path.join(tmp.path, "file.txt")
+      await fs.writeFile(filepath, "one\ntwo\nthree\n", "utf-8")
+
+      await Instance.provide({
+        directory: tmp.path,
+        fn: async () => {
+          const { FileTime } = await import("../../src/file/time")
+          await FileTime.read(ctx.sessionID, filepath)
+
+          const write = await WriteTool.init()
+          const result = await write.execute(
+            {
+              filePath: filepath,
+              content: "one\ndos\nthree\n",
+            },
+            ctx,
+          )
+          expect(result.output).toContain("Reuse metadata.version as expectedVersion")
+
+          const edit = await EditTool.init()
+          await edit.execute(
+            {
+              filePath: filepath,
+              edits: [{ op: "replace", pos: lineRef(result.output, 2), lines: ["tres"] }],
+            },
+            ctx,
+          )
+
+          expect(result.output).toContain("Updated lines:")
+          expect(renderNumberedOutput(result.output)).toContain(">>> 2: dos")
+          expect(await fs.readFile(filepath, "utf-8")).toBe("one\ntres\nthree\n")
         },
       })
     })

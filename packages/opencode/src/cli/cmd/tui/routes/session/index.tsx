@@ -1,3 +1,4 @@
+import { summarizeToolError } from "../../error"
 import {
   batch,
   createContext,
@@ -1762,7 +1763,9 @@ function InlineTool(props: {
   const color = createMemo(() => props.color ?? toolColor(theme, props.part.tool))
   const icon = createMemo(() => props.iconColor ?? color())
 
-  const error = createMemo(() => (props.part.state.status === "error" ? props.part.state.error : undefined))
+  const error = createMemo(() =>
+    props.part.state.status === "error" ? summarizeToolError(props.part.state.error) : undefined,
+  )
 
   const denied = createMemo(
     () =>
@@ -1840,7 +1843,9 @@ function BlockTool(props: {
   const { theme } = useTheme()
   const renderer = useRenderer()
   const [hover, setHover] = createSignal(false)
-  const error = createMemo(() => (props.part?.state.status === "error" ? props.part.state.error : undefined))
+  const error = createMemo(() =>
+    props.part?.state.status === "error" ? summarizeToolError(props.part.state.error) : undefined,
+  )
   const color = createMemo(
     () => props.color ?? (props.part ? toolColor(theme, props.part.tool) : tone(theme, BLOCK_TONE.tool.default)),
   )

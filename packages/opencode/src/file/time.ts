@@ -16,6 +16,8 @@ export namespace FileTime {
     readonly size: number | undefined
   }
 
+  export type Version = string
+
   const stamp = Effect.fnUntraced(function* (file: string) {
     const stat = Filesystem.stat(file)
     const size = typeof stat?.size === "bigint" ? Number(stat.size) : stat?.size
@@ -26,6 +28,10 @@ export namespace FileTime {
       size,
     }
   })
+
+  function encode(stamp: Stamp) {
+    return [stamp.mtime ?? "", stamp.ctime ?? "", stamp.size ?? ""].join(":")
+  }
 
   const session = (reads: Map<SessionID, Map<string, Stamp>>, sessionID: SessionID) => {
     const value = reads.get(sessionID)
@@ -42,9 +48,10 @@ export namespace FileTime {
   }
 
   export interface Interface {
-    readonly read: (sessionID: SessionID, file: string) => Effect.Effect<void>
+    readonly read: (sessionID: SessionID, file: string) => Effect.Effect<Version>
     readonly get: (sessionID: SessionID, file: string) => Effect.Effect<Date | undefined>
-    readonly assert: (sessionID: SessionID, filepath: string) => Effect.Effect<void>
+    readonly version: (file: string) => Effect.Effect<Version>
+    readonly assert: (sessionID: SessionID, filepath: string, expected?: Version) => Effect.Effect<Version>
     readonly withLock: <T>(filepath: string, fn: () => Promise<T>) => Effect.Effect<T>
   }
 
@@ -76,7 +83,9 @@ export namespace FileTime {
       const read = Effect.fn("FileTime.read")(function* (sessionID: SessionID, file: string) {
         const reads = (yield* InstanceState.get(state)).reads
         log.info("read", { sessionID, file })
-        session(reads, sessionID).set(file, yield* stamp(file))
+        const next = yield* stamp(file)
+        session(reads, sessionID).set(file, next)
+        return encode(next)
       })
 
       const get = Effect.fn("FileTime.get")(function* (sessionID: SessionID, file: string) {
@@ -84,19 +93,39 @@ export namespace FileTime {
         return reads.get(sessionID)?.get(file)?.read
       })
 
-      const assert = Effect.fn("FileTime.assert")(function* (sessionID: SessionID, filepath: string) {
-        if (disableCheck) return
+      const current = Effect.fn("FileTime.version")(function* (file: string) {
+        return encode(yield* stamp(file))
+      })
+
+      const assert = Effect.fn("FileTime.assert")(function* (
+        sessionID: SessionID,
+        filepath: string,
+        expected?: Version,
+      ) {
+        if (disableCheck) return yield* current(filepath)
 
         const reads = (yield* InstanceState.get(state)).reads
-        const time = reads.get(sessionID)?.get(filepath)
-        if (!time) throw new Error(`You must read file ${filepath} before overwriting it. Use the Read tool first`)
-
         const next = yield* stamp(filepath)
+        const nextVersion = encode(next)
+        if (expected !== undefined) {
+          if (expected === nextVersion) return nextVersion
+          throw new Error(
+            `File ${filepath} has changed since the provided version was captured.\nCurrent version: ${nextVersion}\nExpected version: ${expected}\n\nPlease read the file again to get fresh anchors and version metadata before modifying it.`,
+          )
+        }
+
+        const time = reads.get(sessionID)?.get(filepath)
+        if (!time) {
+          throw new Error(
+            `You must read file ${filepath} before overwriting it, or reuse a fresh expectedVersion from a prior read, grep, edit, or write result.`,
+          )
+        }
+
         const changed = next.mtime !== time.mtime || next.ctime !== time.ctime || next.size !== time.size
-        if (!changed) return
+        if (!changed) return nextVersion
 
         throw new Error(
-          `File ${filepath} has been modified since it was last read.\nLast modification: ${new Date(next.mtime ?? next.read.getTime()).toISOString()}\nLast read: ${time.read.toISOString()}\n\nPlease read the file again before modifying it.`,
+          `File ${filepath} has been modified since it was last read.\nLast modification: ${new Date(next.mtime ?? next.read.getTime()).toISOString()}\nLast read: ${time.read.toISOString()}\n\nPlease read the file again to get fresh anchors and version metadata before modifying it.`,
         )
       })
 
@@ -104,7 +133,7 @@ export namespace FileTime {
         return yield* Effect.promise(fn).pipe((yield* getLock(filepath)).withPermits(1))
       })
 
-      return Service.of({ read, get, assert, withLock })
+      return Service.of({ read, get, version: current, assert, withLock })
     }),
   ).pipe(Layer.orDie)
 
@@ -118,8 +147,12 @@ export namespace FileTime {
     return runPromise((s) => s.get(sessionID, file))
   }
 
-  export async function assert(sessionID: SessionID, filepath: string) {
-    return runPromise((s) => s.assert(sessionID, filepath))
+  export function version(file: string) {
+    return runPromise((s) => s.version(file))
+  }
+
+  export async function assert(sessionID: SessionID, filepath: string, expected?: Version) {
+    return runPromise((s) => s.assert(sessionID, filepath, expected))
   }
 
   export async function withLock<T>(filepath: string, fn: () => Promise<T>): Promise<T> {

@@ -2,6 +2,7 @@ const NIBBLE = "ZPMQVRWSNKTXJBYH"
 const HASH = Array.from({ length: 256 }, (_, i) => `${NIBBLE[i >>> 4]}${NIBBLE[i & 0x0f]}`)
 const REF = /^([0-9]+)#([ZPMQVRWSNKTXJBYH]{2})$/
 const OUT = /^(\s*(?:>>>\s*)?)([0-9]+)#([ZPMQVRWSNKTXJBYH]{2})\|(.*)$/
+const DIAGNOSTIC_REF = /\[(\d+)#[ZPMQVRWSNKTXJBYH]{2}(?::(\d+))?\]/g
 const WORD = /[\p{L}\p{N}]/u
 
 export type Edit =
@@ -25,8 +26,8 @@ export function computeLineHash(line: number, content: string) {
   return HASH[Bun.hash.xxHash32(text, seed) % 256]
 }
 
-export function formatHashLine(line: number, content: string) {
-  return `${line}#${computeLineHash(line, content)}|${content}`
+export function formatHashLine(line: number, content: string, display = content) {
+  return `${line}#${computeLineHash(line, content)}|${display}`
 }
 
 export function renderNumberedOutput(text: string) {
@@ -34,10 +35,47 @@ export function renderNumberedOutput(text: string) {
     .split("\n")
     .map((line) => {
       const match = line.match(OUT)
-      if (!match) return line
-      return `${match[1]}${match[2]}: ${match[4]}`
+      if (match) return `${match[1]}${match[2]}: ${match[4]}`
+      return line.replace(DIAGNOSTIC_REF, (_, row: string, col?: string) => `[${row}${col ? `:${col}` : ""}]`)
     })
     .join("\n")
+}
+
+export function changedPreview(before: string, after: string) {
+  const prev = contentLines(before)
+  const next = contentLines(after)
+  if (prev.length === 0 && next.length === 0) return ""
+
+  let start = 0
+  while (start < prev.length && start < next.length && prev[start] === next[start]) start++
+
+  let prevEnd = prev.length - 1
+  let nextEnd = next.length - 1
+  while (prevEnd >= start && nextEnd >= start && prev[prevEnd] === next[nextEnd]) {
+    prevEnd--
+    nextEnd--
+  }
+
+  if (next.length === 0) return ""
+
+  const from = Math.max(0, start - 1)
+  const to = Math.min(next.length - 1, Math.max(start, nextEnd + 1))
+  const out = [] as string[]
+  if (from > 0) out.push("...")
+
+  for (let i = from; i <= to; i++) {
+    const mark = i >= start && i <= nextEnd ? ">>> " : ""
+    out.push(`${mark}${formatHashLine(i + 1, next[i])}`)
+  }
+
+  if (to < next.length - 1) out.push("...")
+  return out.join("\n")
+}
+
+function contentLines(text: string) {
+  const lines = text.split("\n")
+  if (lines.at(-1) === "") lines.pop()
+  return lines
 }
 
 function parse(ref: string) {

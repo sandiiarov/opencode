@@ -376,9 +376,9 @@ describe("tool.read truncation", () => {
   })
 
   test("truncates long lines", async () => {
+    const longLine = "x".repeat(3000)
     await using tmp = await tmpdir({
       init: async (dir) => {
-        const longLine = "x".repeat(3000)
         await Bun.write(path.join(dir, "long-line.txt"), longLine)
       },
     })
@@ -387,7 +387,9 @@ describe("tool.read truncation", () => {
       fn: async () => {
         const read = await ReadTool.init()
         const result = await read.execute({ filePath: path.join(tmp.path, "long-line.txt") }, ctx)
-        expect(result.output).toContain("(line truncated to 2000 chars)")
+        expect(result.output).toContain(
+          `1#${computeLineHash(1, longLine)}|${longLine.slice(0, 2000)}... (line truncated to 2000 chars)`,
+        )
         expect(result.output.length).toBeLessThan(3000)
       },
     })

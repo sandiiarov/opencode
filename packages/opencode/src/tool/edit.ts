@@ -12,7 +12,7 @@ import { FileTime } from "../file/time"
 import { Filesystem } from "../util/filesystem"
 import { Instance } from "../project/instance"
 import { assertExternalDirectory } from "./external-directory"
-import { apply, canCreate, type Edit } from "./hashline"
+import { apply, canCreate, changedPreview, type Edit } from "./hashline"
 
 const MAX_DIAGNOSTICS = 20
 
@@ -20,6 +20,10 @@ const Params = z.object({
   filePath: z.string().describe("The absolute path to the file to modify"),
   delete: z.boolean().optional().describe("Delete the file instead of editing it"),
   rename: z.string().optional().describe("Rename the file after applying edits"),
+  expectedVersion: z
+    .string()
+    .optional()
+    .describe("Optional file version token from a prior read, edit, or write result"),
   edits: z
     .array(
       z.object({
@@ -62,12 +66,13 @@ export const EditTool = Tool.define("edit", {
     let out = "Edit applied successfully."
     let target = movePath && movePath !== filePath ? movePath : filePath
     let kind: "add" | "change" | "unlink" = "change"
+    let version = ""
 
     await FileTime.withLock(filePath, async () => {
       const stat = Filesystem.stat(filePath)
       const exists = Boolean(stat)
       if (stat?.isDirectory()) throw new Error(`Path is a directory, not a file: ${filePath}`)
-      if (exists) await FileTime.assert(ctx.sessionID, filePath)
+      if (exists) await FileTime.assert(ctx.sessionID, filePath, params.expectedVersion)
       if (!exists && params.delete) throw new Error(`File ${filePath} not found`)
       if (!exists && !canCreate(params.edits as Edit[])) throw new Error(`File ${filePath} not found`)
 
@@ -123,7 +128,7 @@ export const EditTool = Tool.define("edit", {
 
       await Bus.publish(File.Event.Edited, { file: target })
       await Bus.publish(FileWatcher.Event.Updated, { file: target, event: kind })
-      await FileTime.read(ctx.sessionID, target)
+      version = await FileTime.read(ctx.sessionID, target)
     })
 
     let additions = 0
@@ -143,10 +148,15 @@ export const EditTool = Tool.define("edit", {
 
     const diagnostics = params.delete ? {} : await report(target)
     if (!params.delete) {
+      const preview = changedPreview(before, after)
+      if (preview) out += `\n\nUpdated lines:\n<content>\n${preview}\n</content>`
+      out += `\n\nReuse metadata.version as expectedVersion to avoid rereading before the next edit or write.`
+
       const list = diagnostics[Filesystem.normalizePath(target)] ?? []
       const show = LSP.Diagnostic.sort(list.filter(LSP.Diagnostic.visible)).slice(0, MAX_DIAGNOSTICS)
       if (show.length) {
-        out += `\n\nLSP diagnostics detected in this file, please review:\n<diagnostics file=\"${target}\">\n${show.map(LSP.Diagnostic.pretty).join("\n")}\n</diagnostics>`
+        const lines = after.split("\n")
+        out += `\n\nLSP diagnostics detected in this file, please review:\n<diagnostics file="${target}">\n${show.map((item) => LSP.Diagnostic.pretty(item, lines[item.range.start.line])).join("\n")}\n</diagnostics>`
       }
     }
 
@@ -157,6 +167,7 @@ export const EditTool = Tool.define("edit", {
         diagnostics,
         diff,
         filediff,
+        version,
       },
     }
   },

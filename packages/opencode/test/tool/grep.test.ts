@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import path from "path"
 import { GrepTool } from "../../src/tool/grep"
+import { computeLineHash, renderNumberedOutput } from "../../src/tool/hashline"
 import { Instance } from "../../src/project/instance"
 import { tmpdir } from "../fixture/fixture"
 import { SessionID, MessageID } from "../../src/session/schema"
@@ -81,6 +82,41 @@ describe("tool.grep", () => {
           ctx,
         )
         expect(result.metadata.matches).toBeGreaterThan(0)
+      },
+    })
+  })
+
+  test("returns hashline refs that match read-style anchors", async () => {
+    await using tmp = await tmpdir({
+      init: async (dir) => {
+        await Bun.write(path.join(dir, "test.txt"), "alpha\nbeta\n")
+      },
+    })
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const grep = await GrepTool.init()
+        const result = await grep.execute({ pattern: "beta", path: tmp.path }, ctx)
+        expect(result.output).toContain(`  2#${computeLineHash(2, "beta")}|beta`)
+        expect(renderNumberedOutput(result.output)).toContain("  2: beta")
+      },
+    })
+  })
+
+  test("returns version metadata for matched files", async () => {
+    await using tmp = await tmpdir({
+      init: async (dir) => {
+        await Bun.write(path.join(dir, "test.txt"), "alpha\nbeta\n")
+      },
+    })
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const grep = await GrepTool.init()
+        const result = await grep.execute({ pattern: "beta", path: tmp.path }, ctx)
+        const file = path.join(tmp.path, "test.txt")
+        expect(typeof result.metadata.versions[file]).toBe("string")
+        expect(result.metadata.versions[file].length).toBeGreaterThan(0)
       },
     })
   })

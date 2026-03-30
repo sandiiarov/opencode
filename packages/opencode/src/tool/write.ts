@@ -12,15 +12,25 @@ import { Filesystem } from "../util/filesystem"
 import { Instance } from "../project/instance"
 import { trimDiff } from "./edit"
 import { assertExternalDirectory } from "./external-directory"
+import { changedPreview } from "./hashline"
 
 const MAX_DIAGNOSTICS_PER_FILE = 20
 const MAX_PROJECT_DIAGNOSTICS_FILES = 5
+
+async function lines(file: string) {
+  const text = await Filesystem.readText(file).catch(() => "")
+  return text.split("\n")
+}
 
 export const WriteTool = Tool.define("write", {
   description: DESCRIPTION,
   parameters: z.object({
     content: z.string().describe("The content to write to the file"),
     filePath: z.string().describe("The absolute path to the file to write (must be absolute, not relative)"),
+    expectedVersion: z
+      .string()
+      .optional()
+      .describe("Optional file version token from a prior read, edit, or write result"),
   }),
   async execute(params, ctx) {
     const filepath = path.isAbsolute(params.filePath) ? params.filePath : path.join(Instance.directory, params.filePath)
@@ -28,7 +38,7 @@ export const WriteTool = Tool.define("write", {
 
     const exists = await Filesystem.exists(filepath)
     const contentOld = exists ? await Filesystem.readText(filepath) : ""
-    if (exists) await FileTime.assert(ctx.sessionID, filepath)
+    if (exists) await FileTime.assert(ctx.sessionID, filepath, params.expectedVersion)
 
     const diff = trimDiff(createTwoFilesPatch(filepath, filepath, contentOld, params.content))
     await ctx.ask({
@@ -49,9 +59,12 @@ export const WriteTool = Tool.define("write", {
       file: filepath,
       event: exists ? "change" : "add",
     })
-    await FileTime.read(ctx.sessionID, filepath)
+    const version = await FileTime.read(ctx.sessionID, filepath)
 
     let output = "Wrote file successfully."
+    const preview = changedPreview(contentOld, params.content)
+    if (preview) output += `\n\nUpdated lines:\n<content>\n${preview}\n</content>`
+    output += `\n\nReuse metadata.version as expectedVersion to avoid rereading before the next edit or write.`
     await LSP.touchFile(filepath, true)
     const diagnostics = await LSP.diagnostics()
     const normalizedFilepath = Filesystem.normalizePath(filepath)
@@ -62,13 +75,15 @@ export const WriteTool = Tool.define("write", {
       const limited = problems.slice(0, MAX_DIAGNOSTICS_PER_FILE)
       const suffix =
         problems.length > MAX_DIAGNOSTICS_PER_FILE ? `\n... and ${problems.length - MAX_DIAGNOSTICS_PER_FILE} more` : ""
+      const source = file === normalizedFilepath ? params.content.split("\n") : await lines(file)
+      const rendered = limited.map((item) => LSP.Diagnostic.pretty(item, source[item.range.start.line])).join("\n")
       if (file === normalizedFilepath) {
-        output += `\n\nLSP diagnostics detected in this file, please review:\n<diagnostics file="${filepath}">\n${limited.map(LSP.Diagnostic.pretty).join("\n")}${suffix}\n</diagnostics>`
+        output += `\n\nLSP diagnostics detected in this file, please review:\n<diagnostics file="${filepath}">\n${rendered}${suffix}\n</diagnostics>`
         continue
       }
       if (projectDiagnosticsCount >= MAX_PROJECT_DIAGNOSTICS_FILES) continue
       projectDiagnosticsCount++
-      output += `\n\nLSP diagnostics detected in other files:\n<diagnostics file="${file}">\n${limited.map(LSP.Diagnostic.pretty).join("\n")}${suffix}\n</diagnostics>`
+      output += `\n\nLSP diagnostics detected in other files:\n<diagnostics file="${file}">\n${rendered}${suffix}\n</diagnostics>`
     }
 
     return {
@@ -77,6 +92,7 @@ export const WriteTool = Tool.define("write", {
         diagnostics,
         filepath,
         exists: exists,
+        version,
       },
       output,
     }

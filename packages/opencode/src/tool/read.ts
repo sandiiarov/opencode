@@ -111,6 +111,7 @@ export const ReadTool = Tool.define("read", {
         metadata: {
           preview: sliced.slice(0, 20).join("\n"),
           truncated,
+          version: "",
           loaded: [] as string[],
         },
       }
@@ -130,6 +131,7 @@ export const ReadTool = Tool.define("read", {
         metadata: {
           preview: msg,
           truncated: false,
+          version: "",
           loaded: instructions.map((i) => i.filepath),
         },
         attachments: [
@@ -156,7 +158,7 @@ export const ReadTool = Tool.define("read", {
     const limit = params.limit ?? DEFAULT_READ_LIMIT
     const offset = params.offset ?? 1
     const start = offset - 1
-    const raw: string[] = []
+    const raw: { source: string; display: string }[] = []
     let bytes = 0
     let lines = 0
     let truncatedByBytes = false
@@ -179,7 +181,7 @@ export const ReadTool = Tool.define("read", {
           break
         }
 
-        raw.push(line)
+        raw.push({ source: text, display: line })
         bytes += size
       }
     } finally {
@@ -191,8 +193,11 @@ export const ReadTool = Tool.define("read", {
       throw new Error(`Offset ${offset} is out of range for this file (${lines} lines)`)
     }
 
-    const content = raw.map((line, index) => formatHashLine(index + offset, line))
-    const preview = raw.slice(0, 20).join("\n")
+    const content = raw.map((line, index) => formatHashLine(index + offset, line.source, line.display))
+    const preview = raw
+      .slice(0, 20)
+      .map((line) => line.display)
+      .join("\n")
 
     let output = [`<path>${filepath}</path>`, `<type>file</type>`, "<content>"].join("\n")
     output += content.join("\n")
@@ -213,7 +218,7 @@ export const ReadTool = Tool.define("read", {
 
     // just warms the lsp client
     LSP.touchFile(filepath, false)
-    await FileTime.read(ctx.sessionID, filepath)
+    const version = await FileTime.read(ctx.sessionID, filepath)
 
     if (instructions.length > 0) {
       output += `\n\n<system-reminder>\n${instructions.map((i) => i.content).join("\n\n")}\n</system-reminder>`
@@ -225,6 +230,7 @@ export const ReadTool = Tool.define("read", {
       metadata: {
         preview,
         truncated,
+        version,
         loaded: instructions.map((i) => i.filepath),
       },
     }

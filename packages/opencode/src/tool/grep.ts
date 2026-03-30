@@ -9,6 +9,8 @@ import DESCRIPTION from "./grep.txt"
 import { Instance } from "../project/instance"
 import path from "path"
 import { assertExternalDirectory } from "./external-directory"
+import { formatHashLine } from "./hashline"
+import { FileTime } from "../file/time"
 
 const MAX_LINE_LENGTH = 2000
 
@@ -66,7 +68,7 @@ export const GrepTool = Tool.define("grep", {
     if (exitCode === 1 || (exitCode === 2 && !output.trim())) {
       return {
         title: params.pattern,
-        metadata: { matches: 0, truncated: false },
+        metadata: { matches: 0, truncated: false, versions: {} },
         output: "No files found",
       }
     }
@@ -110,13 +112,19 @@ export const GrepTool = Tool.define("grep", {
     if (finalMatches.length === 0) {
       return {
         title: params.pattern,
-        metadata: { matches: 0, truncated: false },
+        metadata: { matches: 0, truncated: false, versions: {} },
         output: "No files found",
       }
     }
 
     const totalMatches = matches.length
     const outputLines = [`Found ${totalMatches} matches${truncated ? ` (showing first ${limit})` : ""}`]
+
+    const files = [...new Set(finalMatches.map((match) => match.path))]
+    const versionEntries = await Promise.all(
+      files.map(async (file) => [file, await FileTime.read(ctx.sessionID, file)] as const),
+    )
+    const versions = Object.fromEntries(versionEntries)
 
     let currentFile = ""
     for (const match of finalMatches) {
@@ -129,7 +137,7 @@ export const GrepTool = Tool.define("grep", {
       }
       const truncatedLineText =
         match.lineText.length > MAX_LINE_LENGTH ? match.lineText.substring(0, MAX_LINE_LENGTH) + "..." : match.lineText
-      outputLines.push(`  Line ${match.lineNum}: ${truncatedLineText}`)
+      outputLines.push(`  ${formatHashLine(match.lineNum, match.lineText, truncatedLineText)}`)
     }
 
     if (truncated) {
@@ -149,6 +157,7 @@ export const GrepTool = Tool.define("grep", {
       metadata: {
         matches: totalMatches,
         truncated,
+        versions,
       },
       output: outputLines.join("\n"),
     }

@@ -1,7 +1,8 @@
 Performs additive hashline edits in files.
 
 Usage:
-- You must use your `Read` tool before editing an existing file. Copy the exact `LINE#ID` anchors from the latest read output.
+- You must have fresh anchors or a fresh version token for the file before editing it. Prefer reusing `{line}#{id}` anchors from the latest `read`, `grep`, `edit`, or `write` result and pass `expectedVersion` from prior tool metadata when available. Re-read only when anchors are stale, missing, or you need more context.
+- Prefer reusing the `Updated lines` anchors returned by `edit` or `write` for follow-up edits before re-reading.
 - Keep edits additive and narrow. Prefer a few small anchored operations over rewriting unrelated surrounding code.
 - Each edit call applies against the original file state. Do not renumber later edits in the same call.
 - Use `replace` for line/range replacement, `append` to insert after an anchor or at EOF, and `prepend` to insert before an anchor or at BOF.
