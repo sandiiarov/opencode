@@ -16,7 +16,7 @@ export const CHEVRON_DOWN = ""
 export const CHEVRON_RIGHT = ""
 export const STATUS_ON_MARK = ""
 export const STATUS_OFF_MARK = ""
-export const TOKEN_MARK = ""
+export const TOKEN_MARK = ""
 export const COST_MARK = ""
 export const CHECK_MARK = "󰧖"
 export const DISABLED_MARK = "󰅗"
@@ -27,8 +27,6 @@ export const DIAG_WARN_MARK = ""
 export const DIAG_INFO_MARK = ""
 export const DIAG_HINT_MARK = ""
 export const DIAG_ERROR_MARK = ""
-export const LOADING_FRAMES = ["", "", "", "", "", ""] as const
-export const CONTEXT_ICON = {
-  empty: { start: "", body: "", end: "" },
-  fill: { start: "", body: "", end: "" },
-} as const
+export const CONTEXT_PROGRESS_FILL = "█"
+export const CONTEXT_PROGRESS_EMPTY = "░"
+export const PERCENT_MARK = "󰏰"

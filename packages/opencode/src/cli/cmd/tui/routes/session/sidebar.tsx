@@ -12,8 +12,11 @@ import {
   BRANCH_MARK,
   CHEVRON_DOWN,
   CHEVRON_RIGHT,
+  CONTEXT_PROGRESS_EMPTY,
+  CONTEXT_PROGRESS_FILL,
   COST_MARK,
   FOLDER_MARK,
+  PERCENT_MARK,
   SEP_MARK,
   STATUS_OFF_MARK,
   STATUS_ON_MARK,
@@ -33,7 +36,7 @@ const contextColor = (theme: ReturnType<typeof useTheme>["theme"], n?: number | 
 const progress = (n?: number | null, w = barw) => {
   const pct = n == null ? 0 : Math.max(0, Math.min(100, Math.round(n)))
   const fill = Math.round(pct / (100 / w))
-  return `${"█".repeat(fill)}${"░".repeat(w - fill)} ${pct}󰏰`
+  return `${CONTEXT_PROGRESS_FILL.repeat(fill)}${CONTEXT_PROGRESS_EMPTY.repeat(w - fill)} ${pct}${PERCENT_MARK}`
 }
 
 export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
