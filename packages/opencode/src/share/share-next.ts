@@ -5,7 +5,7 @@ import { Provider } from "@/provider/provider"
 import { ProviderID, ModelID } from "@/provider/schema"
 import { Session } from "@/session"
 import type { SessionID } from "@/session/schema"
-import { MessageV2 } from "@/session/message-v2"
+import { Message } from "@/session/message"
 import { Database, eq } from "@/storage/db"
 import { SessionShareTable } from "./share.sql"
 import { Log } from "@/util/log"
@@ -30,7 +30,6 @@ export namespace ShareNext {
     }
   }
 
-  const legacyApi = apiEndpoints("share")
   const consoleApi = apiEndpoints("shares")
 
   export async function url() {
@@ -48,7 +47,7 @@ export namespace ShareNext {
     const active = await Account.active()
     if (!active?.active_org_id) {
       const baseUrl = await Config.get().then((x) => x.enterprise?.url ?? "https://opncd.ai")
-      return { headers, api: legacyApi, baseUrl }
+      return { headers, api: consoleApi, baseUrl }
     }
 
     const token = await Account.token(active.id)
@@ -73,7 +72,7 @@ export namespace ShareNext {
         },
       ])
     })
-    Bus.subscribe(MessageV2.Event.Updated, async (evt) => {
+    Bus.subscribe(Message.Event.Updated, async (evt) => {
       await sync(evt.properties.info.sessionID, [
         {
           type: "message",
@@ -93,7 +92,7 @@ export namespace ShareNext {
         ])
       }
     })
-    Bus.subscribe(MessageV2.Event.PartUpdated, async (evt) => {
+    Bus.subscribe(Message.Event.PartUpdated, async (evt) => {
       await sync(evt.properties.part.sessionID, [
         {
           type: "part",
@@ -254,7 +253,7 @@ export namespace ShareNext {
     log.info("full sync", { sessionID })
     const session = await Session.get(sessionID)
     const diffs = await Session.diff(sessionID)
-    const messages = await Array.fromAsync(MessageV2.stream(sessionID))
+    const messages = await Array.fromAsync(Message.stream(sessionID))
     const models = await Promise.all(
       Array.from(
         new Map(

@@ -3,7 +3,7 @@ import { basename } from "path"
 import { Agent } from "../../../agent/agent"
 import { Provider } from "../../../provider/provider"
 import { Session } from "../../../session"
-import type { MessageV2 } from "../../../session/message-v2"
+import type { Message } from "../../../session/message"
 import { MessageID, PartID } from "../../../session/schema"
 import { ToolRegistry } from "../../../tool/registry"
 import { Instance } from "../../../project/instance"
@@ -116,7 +116,7 @@ async function createToolContext(agent: Agent.Info) {
   const messageID = MessageID.ascending()
   const model = agent.model ?? (await Provider.defaultModel())
   const now = Date.now()
-  const message: MessageV2.Assistant = {
+  const message: Message.Assistant = {
     id: messageID,
     sessionID: session.id,
     role: "assistant",

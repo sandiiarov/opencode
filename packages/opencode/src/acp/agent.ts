@@ -39,7 +39,7 @@ import { ModelID, ProviderID } from "../provider/schema"
 import { Agent as AgentModule } from "../agent/agent"
 import { Installation } from "@/installation"
 import { renderNumberedOutput } from "@/tool/hashline"
-import { MessageV2 } from "@/session/message-v2"
+import { Message } from "@/session/message"
 import { Config } from "@/config/config"
 import { Todo } from "@/session/todo"
 import { z } from "zod"
@@ -588,7 +588,7 @@ export namespace ACP {
           _meta: load._meta,
         }
       } catch (e) {
-        const error = MessageV2.fromError(e, {
+        const error = Message.fromError(e, {
           providerID: ProviderID.make(this.config.defaultModel?.providerID ?? "unknown"),
         })
         if (LoadAPIKeyError.isInstance(error)) {
@@ -653,7 +653,7 @@ export namespace ACP {
 
         return result
       } catch (e) {
-        const error = MessageV2.fromError(e, {
+        const error = Message.fromError(e, {
           providerID: ProviderID.make(this.config.defaultModel?.providerID ?? "unknown"),
         })
         if (LoadAPIKeyError.isInstance(error)) {
@@ -698,7 +698,7 @@ export namespace ACP {
         if (next) response.nextCursor = next
         return response
       } catch (e) {
-        const error = MessageV2.fromError(e, {
+        const error = Message.fromError(e, {
           providerID: ProviderID.make(this.config.defaultModel?.providerID ?? "unknown"),
         })
         if (LoadAPIKeyError.isInstance(error)) {
@@ -763,7 +763,7 @@ export namespace ACP {
 
         return mode
       } catch (e) {
-        const error = MessageV2.fromError(e, {
+        const error = Message.fromError(e, {
           providerID: ProviderID.make(this.config.defaultModel?.providerID ?? "unknown"),
         })
         if (LoadAPIKeyError.isInstance(error)) {
@@ -794,7 +794,7 @@ export namespace ACP {
 
         return result
       } catch (e) {
-        const error = MessageV2.fromError(e, {
+        const error = Message.fromError(e, {
           providerID: ProviderID.make(this.config.defaultModel?.providerID ?? "unknown"),
         })
         if (LoadAPIKeyError.isInstance(error)) {

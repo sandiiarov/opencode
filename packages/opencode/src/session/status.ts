@@ -35,7 +35,7 @@ export namespace SessionStatus {
         status: Info,
       }),
     ),
-    // deprecated
+
     Idle: BusEvent.define(
       "session.idle",
       z.object({

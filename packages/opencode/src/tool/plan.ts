@@ -3,14 +3,14 @@ import path from "path"
 import { Tool } from "./tool"
 import { Question } from "../question"
 import { Session } from "../session"
-import { MessageV2 } from "../session/message-v2"
+import { Message } from "../session/message"
 import { Provider } from "../provider/provider"
 import { Instance } from "../project/instance"
 import { type SessionID, MessageID, PartID } from "../session/schema"
 import EXIT_DESCRIPTION from "./plan-exit.txt"
 
 async function getLastModel(sessionID: SessionID) {
-  for await (const item of MessageV2.stream(sessionID)) {
+  for await (const item of Message.stream(sessionID)) {
     if (item.info.role === "user" && item.info.model) return item.info.model
   }
   return Provider.defaultModel()
@@ -43,7 +43,7 @@ export const PlanExitTool = Tool.define("plan_exit", {
 
     const model = await getLastModel(ctx.sessionID)
 
-    const userMsg: MessageV2.User = {
+    const userMsg: Message.User = {
       id: MessageID.ascending(),
       sessionID: ctx.sessionID,
       role: "user",
@@ -61,7 +61,7 @@ export const PlanExitTool = Tool.define("plan_exit", {
       type: "text",
       text: `The plan at ${plan} has been approved, you can now edit files. Execute the plan`,
       synthetic: true,
-    } satisfies MessageV2.TextPart)
+    } satisfies Message.TextPart)
 
     return {
       title: "Switching to build agent",
@@ -101,7 +101,7 @@ export const PlanEnterTool = Tool.define("plan_enter", {
 
     const model = await getLastModel(ctx.sessionID)
 
-    const userMsg: MessageV2.User = {
+    const userMsg: Message.User = {
       id: MessageID.ascending(),
       sessionID: ctx.sessionID,
       role: "user",
@@ -119,7 +119,7 @@ export const PlanEnterTool = Tool.define("plan_enter", {
       type: "text",
       text: "User has requested to enter plan mode. Switch to plan mode and begin planning.",
       synthetic: true,
-    } satisfies MessageV2.TextPart)
+    } satisfies Message.TextPart)
 
     return {
       title: "Switching to plan agent",

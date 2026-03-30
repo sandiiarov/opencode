@@ -1,7 +1,7 @@
 import type { Argv } from "yargs"
-import type { Session as SDKSession, Message, Part } from "@opencode-ai/sdk/v2"
+import type { Session as SDKSession, Message as SDKMessage, Part } from "@opencode-ai/sdk/v2"
 import { Session } from "../../session"
-import { MessageV2 } from "../../session/message-v2"
+import { Message } from "../../session/message"
 import { cmd } from "./cmd"
 import { bootstrap } from "../bootstrap"
 import { Database } from "../../storage/db"
@@ -14,7 +14,7 @@ import { Filesystem } from "../../util/filesystem"
 /** Discriminated union returned by the ShareNext API (GET /api/shares/:id/data) */
 export type ShareData =
   | { type: "session"; data: SDKSession }
-  | { type: "message"; data: Message }
+  | { type: "message"; data: SDKMessage }
   | { type: "part"; data: Part }
   | { type: "session_diff"; data: unknown }
   | { type: "model"; data: unknown }
@@ -43,12 +43,12 @@ export function shouldAttachShareAuthHeaders(shareUrl: string, accountBaseUrl: s
  */
 export function transformShareData(shareData: ShareData[]): {
   info: SDKSession
-  messages: Array<{ info: Message; parts: Part[] }>
+  messages: Array<{ info: SDKMessage; parts: Part[] }>
 } | null {
   const sessionItem = shareData.find((d) => d.type === "session")
   if (!sessionItem) return null
 
-  const messageMap = new Map<string, Message>()
+  const messageMap = new Map<string, SDKMessage>()
   const partMap = new Map<string, Part[]>()
 
   for (const item of shareData) {
@@ -89,7 +89,7 @@ export const ImportCommand = cmd({
         | {
             info: SDKSession
             messages: Array<{
-              info: Message
+              info: SDKMessage
               parts: Part[]
             }>
           }
@@ -112,15 +112,9 @@ export const ImportCommand = cmd({
         const headers = shouldAttachShareAuthHeaders(args.file, req.baseUrl) ? req.headers : {}
 
         const dataPath = req.api.data(slug)
-        let response = await fetch(`${baseUrl}${dataPath}`, {
+        const response = await fetch(`${baseUrl}${dataPath}`, {
           headers,
         })
-
-        if (!response.ok && dataPath !== `/api/share/${slug}/data`) {
-          response = await fetch(`${baseUrl}/api/share/${slug}/data`, {
-            headers,
-          })
-        }
 
         if (!response.ok) {
           process.stdout.write(`Failed to fetch share data: ${response.statusText}`)
@@ -167,7 +161,7 @@ export const ImportCommand = cmd({
       )
 
       for (const msg of exportData.messages) {
-        const msgInfo = MessageV2.Info.parse(msg.info)
+        const msgInfo = Message.Info.parse(msg.info)
         const { id, sessionID: _, ...msgData } = msgInfo
         Database.use((db) =>
           db
@@ -183,7 +177,7 @@ export const ImportCommand = cmd({
         )
 
         for (const part of msg.parts) {
-          const partInfo = MessageV2.Part.parse(part)
+          const partInfo = Message.Part.parse(part)
           const { id: partId, sessionID: _s, messageID, ...partData } = partInfo
           Database.use((db) =>
             db

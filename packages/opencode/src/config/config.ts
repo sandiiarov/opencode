@@ -1,6 +1,6 @@
 import { Log } from "../util/log"
 import path from "path"
-import { pathToFileURL, fileURLToPath } from "url"
+import { pathToFileURL } from "url"
 import { createRequire } from "module"
 import os from "os"
 import z from "zod"
@@ -128,7 +128,6 @@ export namespace Config {
     }
 
     result.agent = result.agent || {}
-    result.mode = result.mode || {}
     result.plugin = result.plugin || []
 
     const directories = await ConfigPaths.directories(Instance.directory, Instance.worktree)
@@ -147,7 +146,6 @@ export namespace Config {
           result = mergeConfigConcatArrays(result, await loadFile(path.join(dir, file)))
           // to satisfy the type checker
           result.agent ??= {}
-          result.mode ??= {}
           result.plugin ??= []
         }
       }
@@ -161,7 +159,6 @@ export namespace Config {
 
       result.command = mergeDeep(result.command ?? {}, await loadCommand(dir))
       result.agent = mergeDeep(result.agent, await loadAgent(dir))
-      result.agent = mergeDeep(result.agent, await loadMode(dir))
       result.plugin.push(...(await loadPlugin(dir)))
     }
 
@@ -213,40 +210,11 @@ export namespace Config {
       }
     }
 
-    // Migrate deprecated mode field to agent field
-    for (const [name, mode] of Object.entries(result.mode ?? {})) {
-      result.agent = mergeDeep(result.agent ?? {}, {
-        [name]: {
-          ...mode,
-          mode: "primary" as const,
-        },
-      })
-    }
-
     if (Flag.OPENCODE_PERMISSION) {
       result.permission = mergeDeep(result.permission ?? {}, JSON.parse(Flag.OPENCODE_PERMISSION))
     }
 
-    // Backwards compatibility: legacy top-level `tools` config
-    if (result.tools) {
-      const perms: Record<string, Config.PermissionAction> = {}
-      for (const [tool, enabled] of Object.entries(result.tools)) {
-        const action: Config.PermissionAction = enabled ? "allow" : "deny"
-        if (tool === "write" || tool === "edit") {
-          perms.edit = action
-          continue
-        }
-        perms[tool] = action
-      }
-      result.permission = mergeDeep(perms, result.permission ?? {})
-    }
-
     if (!result.username) result.username = os.userInfo().username
-
-    // Handle migration from autoshare to share field
-    if (result.autoshare === true && !result.share) {
-      result.share = "auto"
-    }
 
     // Apply flag overrides for compaction settings
     if (Flag.OPENCODE_DISABLE_AUTOCOMPACT) {
@@ -454,42 +422,6 @@ export namespace Config {
         continue
       }
       throw new InvalidError({ path: item, issues: parsed.error.issues }, { cause: parsed.error })
-    }
-    return result
-  }
-
-  async function loadMode(dir: string) {
-    const result: Record<string, Agent> = {}
-    for (const item of await Glob.scan("{mode,modes}/*.md", {
-      cwd: dir,
-      absolute: true,
-      dot: true,
-      symlink: true,
-    })) {
-      const md = await ConfigMarkdown.parse(item).catch(async (err) => {
-        const message = ConfigMarkdown.FrontmatterError.isInstance(err)
-          ? err.data.message
-          : `Failed to parse mode ${item}`
-        const { Session } = await import("@/session")
-        Bus.publish(Session.Event.Error, { error: new NamedError.Unknown({ message }).toObject() })
-        log.error("failed to load mode", { mode: item, err })
-        return undefined
-      })
-      if (!md) continue
-
-      const config = {
-        name: path.basename(item, ".md"),
-        ...md.data,
-        prompt: md.content.trim(),
-      }
-      const parsed = Agent.safeParse(config)
-      if (parsed.success) {
-        result[config.name] = {
-          ...parsed.data,
-          mode: "primary" as const,
-        }
-        continue
-      }
     }
     return result
   }
@@ -719,7 +651,6 @@ export namespace Config {
       temperature: z.number().optional(),
       top_p: z.number().optional(),
       prompt: z.string().optional(),
-      tools: z.record(z.string(), z.boolean()).optional().describe("@deprecated Use 'permission' field instead"),
       disable: z.boolean().optional(),
       description: z.string().optional().describe("Description of when to use the agent"),
       mode: z.enum(["subagent", "primary", "all"]).optional(),
@@ -741,11 +672,10 @@ export namespace Config {
         .positive()
         .optional()
         .describe("Maximum number of agentic iterations before forcing text-only response"),
-      maxSteps: z.number().int().positive().optional().describe("@deprecated Use 'steps' field instead."),
       permission: Permission.optional(),
     })
     .catchall(z.any())
-    .transform((agent, ctx) => {
+    .transform((agent) => {
       const knownKeys = new Set([
         "name",
         "model",
@@ -758,11 +688,9 @@ export namespace Config {
         "hidden",
         "color",
         "steps",
-        "maxSteps",
         "options",
         "permission",
         "disable",
-        "tools",
       ])
 
       // Extract unknown properties into options
@@ -771,26 +699,8 @@ export namespace Config {
         if (!knownKeys.has(key)) options[key] = value
       }
 
-      // Convert legacy tools config to permissions
-      const permission: Permission = {}
-      for (const [tool, enabled] of Object.entries(agent.tools ?? {})) {
-        const action = enabled ? "allow" : "deny"
-        // write and edit both map to edit permission
-        if (tool === "write" || tool === "edit") {
-          permission.edit = action
-        } else {
-          permission[tool] = action
-        }
-      }
-      Object.assign(permission, agent.permission)
-
-      // Convert legacy maxSteps to steps
-      const steps = agent.steps ?? agent.maxSteps
-
-      return { ...agent, options, permission, steps } as typeof agent & {
+      return { ...agent, options } as typeof agent & {
         options?: Record<string, unknown>
-        permission?: Permission
-        steps?: number
       }
     })
     .meta({
@@ -1064,10 +974,6 @@ export namespace Config {
         .describe(
           "Control sharing behavior:'manual' allows manual sharing via commands, 'auto' enables automatic sharing, 'disabled' disables all sharing",
         ),
-      autoshare: z
-        .boolean()
-        .optional()
-        .describe("@deprecated Use 'share' field instead. Share newly created sessions automatically"),
       disabled_providers: z.array(z.string()).optional().describe("Disable providers that are loaded automatically"),
       enabled_providers: z
         .array(z.string())
@@ -1087,14 +993,6 @@ export namespace Config {
         .string()
         .optional()
         .describe("Custom username to display in conversations instead of system username"),
-      mode: z
-        .object({
-          build: Agent.optional(),
-          plan: Agent.optional(),
-        })
-        .catchall(Agent)
-        .optional()
-        .describe("@deprecated Use `agent` field instead."),
       agent: z
         .object({
           // primary
@@ -1180,9 +1078,7 @@ export namespace Config {
           },
         ),
       instructions: z.array(z.string()).optional().describe("Additional instruction files or patterns to include"),
-      layout: Layout.optional().describe("@deprecated Always uses stretch layout."),
       permission: Permission.optional(),
-      tools: z.record(z.string(), z.boolean()).optional(),
       enterprise: z
         .object({
           url: z.string().optional().describe("Enterprise URL"),
@@ -1237,24 +1133,6 @@ export namespace Config {
       mergeDeep(await loadFile(path.join(Global.Path.config, "opencode.jsonc"))),
     )
 
-    const legacy = path.join(Global.Path.config, "config")
-    if (existsSync(legacy)) {
-      await import(pathToFileURL(legacy).href, {
-        with: {
-          type: "toml",
-        },
-      })
-        .then(async (mod) => {
-          const { provider, model, ...rest } = mod.default
-          if (provider && model) result.model = `${provider}/${model}`
-          result["$schema"] = "https://opencode.ai/config.json"
-          result = mergeDeep(result, rest)
-          await Filesystem.writeJson(path.join(Global.Path.config, "config.json"), result)
-          await fs.unlink(legacy)
-        })
-        .catch(() => {})
-    }
-
     return result
   })
 
@@ -1284,7 +1162,7 @@ export namespace Config {
       delete copy.theme
       delete copy.keybinds
       delete copy.tui
-      log.warn("tui keys in opencode config are deprecated; move them to tui.json", { path: source })
+      log.warn("tui keys in opencode config are ignored; move them to tui.json", { path: source })
       return copy
     })()
 

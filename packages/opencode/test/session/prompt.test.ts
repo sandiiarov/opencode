@@ -5,7 +5,7 @@ import { fileURLToPath } from "url"
 import { Instance } from "../../src/project/instance"
 import { ModelID, ProviderID } from "../../src/provider/schema"
 import { Session } from "../../src/session"
-import { MessageV2 } from "../../src/session/message-v2"
+import { Message } from "../../src/session/message"
 import { SessionPrompt } from "../../src/session/prompt"
 import { Log } from "../../src/util/log"
 import { tmpdir } from "../fixture/fixture"
@@ -93,7 +93,7 @@ describe("session.prompt missing file", () => {
 
         if (msg.info.role !== "user") throw new Error("expected user message")
 
-        const stored = await MessageV2.get({
+        const stored = await Message.get({
           sessionID: session.id,
           messageID: msg.info.id,
         })
@@ -138,7 +138,7 @@ describe("session.prompt special characters", () => {
           parts,
           noReply: true,
         })
-        const stored = await MessageV2.get({ sessionID: session.id, messageID: message.info.id })
+        const stored = await Message.get({ sessionID: session.id, messageID: message.info.id })
         const textParts = stored.parts.filter((part) => part.type === "text")
         const hasContent = textParts.some((part) => part.text.includes("special content"))
         expect(hasContent).toBe(true)

@@ -4,7 +4,7 @@ import fs from "fs/promises"
 import z from "zod"
 import { Filesystem } from "../util/filesystem"
 import { SessionID, MessageID, PartID } from "./schema"
-import { MessageV2 } from "./message-v2"
+import { Message } from "./message"
 import { Log } from "../util/log"
 import { SessionRevert } from "./revert"
 import { Session } from "."
@@ -73,7 +73,7 @@ export namespace SessionPrompt {
         {
           abort: AbortController
           callbacks: {
-            resolve(input: MessageV2.WithParts): void
+            resolve(input: Message.WithParts): void
             reject(reason?: any): void
           }[]
         }
@@ -103,18 +103,13 @@ export namespace SessionPrompt {
       .optional(),
     agent: z.string().optional(),
     noReply: z.boolean().optional(),
-    tools: z
-      .record(z.string(), z.boolean())
-      .optional()
-      .describe(
-        "@deprecated tools and permissions have been merged, you can set permissions on the session itself now",
-      ),
-    format: MessageV2.Format.optional(),
+    tools: z.record(z.string(), z.boolean()).optional(),
+    format: Message.Format.optional(),
     system: z.string().optional(),
     variant: z.string().optional(),
     parts: z.array(
       z.discriminatedUnion("type", [
-        MessageV2.TextPart.omit({
+        Message.TextPart.omit({
           messageID: true,
           sessionID: true,
         })
@@ -124,7 +119,7 @@ export namespace SessionPrompt {
           .meta({
             ref: "TextPartInput",
           }),
-        MessageV2.FilePart.omit({
+        Message.FilePart.omit({
           messageID: true,
           sessionID: true,
         })
@@ -134,7 +129,7 @@ export namespace SessionPrompt {
           .meta({
             ref: "FilePartInput",
           }),
-        MessageV2.AgentPart.omit({
+        Message.AgentPart.omit({
           messageID: true,
           sessionID: true,
         })
@@ -144,7 +139,7 @@ export namespace SessionPrompt {
           .meta({
             ref: "AgentPartInput",
           }),
-        MessageV2.SubtaskPart.omit({
+        Message.SubtaskPart.omit({
           messageID: true,
           sessionID: true,
         })
@@ -280,7 +275,7 @@ export namespace SessionPrompt {
 
     const abort = resume_existing ? resume(sessionID) : start(sessionID)
     if (!abort) {
-      return new Promise<MessageV2.WithParts>((resolve, reject) => {
+      return new Promise<Message.WithParts>((resolve, reject) => {
         const callbacks = state()[sessionID].callbacks
         callbacks.push({ resolve, reject })
       })
@@ -299,18 +294,18 @@ export namespace SessionPrompt {
       await SessionStatus.set(sessionID, { type: "busy" })
       log.info("loop", { step, sessionID })
       if (abort.aborted) break
-      let msgs = await MessageV2.filterCompacted(MessageV2.stream(sessionID))
+      let msgs = await Message.filterCompacted(Message.stream(sessionID))
 
-      let lastUser: MessageV2.User | undefined
-      let lastAssistant: MessageV2.Assistant | undefined
-      let lastFinished: MessageV2.Assistant | undefined
-      let tasks: (MessageV2.CompactionPart | MessageV2.SubtaskPart)[] = []
+      let lastUser: Message.User | undefined
+      let lastAssistant: Message.Assistant | undefined
+      let lastFinished: Message.Assistant | undefined
+      let tasks: (Message.CompactionPart | Message.SubtaskPart)[] = []
       for (let i = msgs.length - 1; i >= 0; i--) {
         const msg = msgs[i]
-        if (!lastUser && msg.info.role === "user") lastUser = msg.info as MessageV2.User
-        if (!lastAssistant && msg.info.role === "assistant") lastAssistant = msg.info as MessageV2.Assistant
+        if (!lastUser && msg.info.role === "user") lastUser = msg.info as Message.User
+        if (!lastAssistant && msg.info.role === "assistant") lastAssistant = msg.info as Message.Assistant
         if (!lastFinished && msg.info.role === "assistant" && msg.info.finish)
-          lastFinished = msg.info as MessageV2.Assistant
+          lastFinished = msg.info as Message.Assistant
         if (lastUser && lastFinished) break
         const task = msg.parts.filter((part) => part.type === "compaction" || part.type === "subtask")
         if (task && !lastFinished) {
@@ -380,7 +375,7 @@ export namespace SessionPrompt {
           time: {
             created: Date.now(),
           },
-        })) as MessageV2.Assistant
+        })) as Message.Assistant
         let part = (await Session.updatePart({
           id: PartID.ascending(),
           messageID: assistantMessage.id,
@@ -400,7 +395,7 @@ export namespace SessionPrompt {
               start: Date.now(),
             },
           },
-        })) as MessageV2.ToolPart
+        })) as Message.ToolPart
         const taskArgs = {
           prompt: task.prompt,
           description: task.description,
@@ -444,7 +439,7 @@ export namespace SessionPrompt {
                 ...part.state,
                 ...input,
               },
-            } satisfies MessageV2.ToolPart)) as MessageV2.ToolPart
+            } satisfies Message.ToolPart)) as Message.ToolPart
           },
           async ask(req) {
             await Permission.ask({
@@ -493,7 +488,7 @@ export namespace SessionPrompt {
                 end: Date.now(),
               },
             },
-          } satisfies MessageV2.ToolPart)
+          } satisfies Message.ToolPart)
         }
         if (!result) {
           await Session.updatePart({
@@ -508,14 +503,14 @@ export namespace SessionPrompt {
               metadata: "metadata" in part.state ? part.state.metadata : undefined,
               input: part.state.input,
             },
-          } satisfies MessageV2.ToolPart)
+          } satisfies Message.ToolPart)
         }
 
         if (task.command) {
           // Add synthetic user message to prevent certain reasoning models from erroring
           // If we create assistant messages w/ out user ones following mid loop thinking signatures
           // will be missing and it can cause errors for models like gemini for example
-          const summaryUserMsg: MessageV2.User = {
+          const summaryUserMsg: Message.User = {
             id: MessageID.ascending(),
             sessionID,
             role: "user",
@@ -533,7 +528,7 @@ export namespace SessionPrompt {
             type: "text",
             text: "Summarize the task tool output above and continue with your task.",
             synthetic: true,
-          } satisfies MessageV2.TextPart)
+          } satisfies Message.TextPart)
         }
 
         continue
@@ -613,7 +608,7 @@ export namespace SessionPrompt {
             created: Date.now(),
           },
           sessionID,
-        })) as MessageV2.Assistant,
+        })) as Message.Assistant,
         sessionID: sessionID,
         model,
         abort,
@@ -692,7 +687,7 @@ export namespace SessionPrompt {
         sessionID,
         system,
         messages: [
-          ...MessageV2.toModelMessages(msgs, model),
+          ...Message.toModelMessages(msgs, model),
           ...(isLastStep
             ? [
                 {
@@ -722,7 +717,7 @@ export namespace SessionPrompt {
       if (modelFinished && !processor.message.error) {
         if (format.type === "json_schema") {
           // Model stopped without calling StructuredOutput tool
-          processor.message.error = new MessageV2.StructuredOutputError({
+          processor.message.error = new Message.StructuredOutputError({
             message: "Model did not produce structured output",
             retries: 0,
           }).toObject()
@@ -744,7 +739,7 @@ export namespace SessionPrompt {
       continue
     }
     SessionCompaction.prune({ sessionID })
-    for await (const item of MessageV2.stream(sessionID)) {
+    for await (const item of Message.stream(sessionID)) {
       if (item.info.role === "user") continue
       const queued = state()[sessionID]?.callbacks ?? []
       for (const q of queued) {
@@ -756,7 +751,7 @@ export namespace SessionPrompt {
   })
 
   async function lastModel(sessionID: SessionID) {
-    for await (const item of MessageV2.stream(sessionID)) {
+    for await (const item of Message.stream(sessionID)) {
       if (item.info.role === "user" && item.info.model) return item.info.model
     }
     return Provider.defaultModel()
@@ -770,7 +765,7 @@ export namespace SessionPrompt {
     tools?: Record<string, boolean>
     processor: SessionProcessor.Info
     bypassAgentCheck: boolean
-    messages: MessageV2.WithParts[]
+    messages: Message.WithParts[]
   }) {
     using _ = log.time("resolveTools")
     const tools: Record<string, AITool> = {}
@@ -900,7 +895,7 @@ export namespace SessionPrompt {
         )
 
         const textParts: string[] = []
-        const attachments: Omit<MessageV2.FilePart, "id" | "sessionID" | "messageID">[] = []
+        const attachments: Omit<Message.FilePart, "id" | "sessionID" | "messageID">[] = []
 
         for (const contentItem of result.content) {
           if (contentItem.type === "text") {
@@ -1004,7 +999,7 @@ export namespace SessionPrompt {
         : undefined
     const variant = input.variant ?? (agent.variant && full?.variants?.[agent.variant] ? agent.variant : undefined)
 
-    const info: MessageV2.Info = {
+    const info: Message.Info = {
       id: input.messageID ?? MessageID.ascending(),
       role: "user",
       sessionID: input.sessionID,
@@ -1020,21 +1015,21 @@ export namespace SessionPrompt {
     }
     using _ = defer(() => InstructionPrompt.clear(info.id))
 
-    type Draft<T> = T extends MessageV2.Part ? Omit<T, "id"> & { id?: string } : never
-    const assign = (part: Draft<MessageV2.Part>): MessageV2.Part => ({
+    type Draft<T> = T extends Message.Part ? Omit<T, "id"> & { id?: string } : never
+    const assign = (part: Draft<Message.Part>): Message.Part => ({
       ...part,
       id: part.id ? PartID.make(part.id) : PartID.ascending(),
     })
 
     const parts = await Promise.all(
-      input.parts.map(async (part): Promise<Draft<MessageV2.Part>[]> => {
+      input.parts.map(async (part): Promise<Draft<Message.Part>[]> => {
         if (part.type === "file") {
           // before checking the protocol we check if this is an mcp resource because it needs special handling
           if (part.source?.type === "resource") {
             const { clientName, uri } = part.source
             log.info("mcp resource", { clientName, uri, mime: part.mime })
 
-            const pieces: Draft<MessageV2.Part>[] = [
+            const pieces: Draft<Message.Part>[] = [
               {
                 messageID: info.id,
                 sessionID: input.sessionID,
@@ -1171,7 +1166,7 @@ export namespace SessionPrompt {
                 }
                 const args = { filePath: filepath, offset, limit }
 
-                const pieces: Draft<MessageV2.Part>[] = [
+                const pieces: Draft<Message.Part>[] = [
                   {
                     messageID: info.id,
                     sessionID: input.sessionID,
@@ -1350,7 +1345,7 @@ export namespace SessionPrompt {
       },
     )
 
-    const parsedInfo = MessageV2.Info.safeParse(info)
+    const parsedInfo = Message.Info.safeParse(info)
     if (!parsedInfo.success) {
       log.error("invalid user message before save", {
         sessionID: input.sessionID,
@@ -1362,7 +1357,7 @@ export namespace SessionPrompt {
     }
 
     parts.forEach((part, index) => {
-      const parsedPart = MessageV2.Part.safeParse(part)
+      const parsedPart = Message.Part.safeParse(part)
       if (parsedPart.success) return
       log.error("invalid user part before save", {
         sessionID: input.sessionID,
@@ -1386,7 +1381,7 @@ export namespace SessionPrompt {
     }
   }
 
-  async function insertReminders(input: { messages: MessageV2.WithParts[]; agent: Agent.Info; session: Session.Info }) {
+  async function insertReminders(input: { messages: Message.WithParts[]; agent: Agent.Info; session: Session.Info }) {
     const userMessage = input.messages.findLast((msg) => msg.info.role === "user")
     if (!userMessage) return input.messages
 
@@ -1573,7 +1568,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       throw error
     }
     const model = input.model ?? agent.model ?? (await lastModel(input.sessionID))
-    const userMsg: MessageV2.User = {
+    const userMsg: Message.User = {
       id: MessageID.ascending(),
       sessionID: input.sessionID,
       time: {
@@ -1587,7 +1582,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       },
     }
     await Session.updateMessage(userMsg)
-    const userPart: MessageV2.Part = {
+    const userPart: Message.Part = {
       type: "text",
       id: PartID.ascending(),
       messageID: userMsg.id,
@@ -1597,7 +1592,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
     }
     await Session.updatePart(userPart)
 
-    const msg: MessageV2.Assistant = {
+    const msg: Message.Assistant = {
       id: MessageID.ascending(),
       sessionID: input.sessionID,
       parentID: userMsg.id,
@@ -1622,7 +1617,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       providerID: model.providerID,
     }
     await Session.updateMessage(msg)
-    const part: MessageV2.Part = {
+    const part: Message.Part = {
       type: "tool",
       id: PartID.ascending(),
       messageID: msg.id,
@@ -1798,7 +1793,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
     parts: z
       .array(
         z.discriminatedUnion("type", [
-          MessageV2.FilePart.omit({
+          Message.FilePart.omit({
             messageID: true,
             sessionID: true,
           }).partial({
@@ -1960,7 +1955,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       agent: userAgent,
       parts,
       variant: input.variant,
-    })) as MessageV2.WithParts
+    })) as Message.WithParts
 
     Bus.publish(Command.Event.Executed, {
       name: input.command,
@@ -1974,7 +1969,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
 
   async function ensureTitle(input: {
     session: Session.Info
-    history: MessageV2.WithParts[]
+    history: Message.WithParts[]
     providerID: ProviderID
     modelID: ModelID
   }) {
@@ -1999,7 +1994,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
 
     // For subtask-only messages (from command invocations), extract the prompt directly
     // since toModelMessage converts subtask parts to generic "The following tool was executed by the user"
-    const subtaskParts = firstRealUser.parts.filter((p) => p.type === "subtask") as MessageV2.SubtaskPart[]
+    const subtaskParts = firstRealUser.parts.filter((p) => p.type === "subtask") as Message.SubtaskPart[]
     const hasOnlySubtaskParts = subtaskParts.length > 0 && firstRealUser.parts.every((p) => p.type === "subtask")
 
     const agent = await Agent.get("title")
@@ -2012,7 +2007,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
     })
     const result = await LLM.stream({
       agent,
-      user: firstRealUser.info as MessageV2.User,
+      user: firstRealUser.info as Message.User,
       system: [],
       small: true,
       tools: {},
@@ -2027,7 +2022,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         },
         ...(hasOnlySubtaskParts
           ? [{ role: "user" as const, content: subtaskParts.map((p) => p.prompt).join("\n") }]
-          : MessageV2.toModelMessages(contextMessages, model)),
+          : Message.toModelMessages(contextMessages, model)),
       ],
     })
     const text = await result.text.catch((err) => log.error("failed to generate title", { error: err }))

@@ -4,7 +4,7 @@ import { Session } from "../../src/session"
 import { ModelID, ProviderID } from "../../src/provider/schema"
 import { SessionRevert } from "../../src/session/revert"
 import { SessionCompaction } from "../../src/session/compaction"
-import { MessageV2 } from "../../src/session/message-v2"
+import { Message } from "../../src/session/message"
 import { Log } from "../../src/util/log"
 import { Instance } from "../../src/project/instance"
 import { MessageID, PartID } from "../../src/session/schema"
@@ -48,7 +48,7 @@ describe("revert + compact workflow", () => {
         })
 
         // Create an assistant response message
-        const assistantMsg1: MessageV2.Assistant = {
+        const assistantMsg1: Message.Assistant = {
           id: MessageID.ascending(),
           role: "assistant",
           sessionID,
@@ -108,7 +108,7 @@ describe("revert + compact workflow", () => {
         })
 
         // Create another assistant response
-        const assistantMsg2: MessageV2.Assistant = {
+        const assistantMsg2: Message.Assistant = {
           id: MessageID.ascending(),
           role: "assistant",
           sessionID,
@@ -222,7 +222,7 @@ describe("revert + compact workflow", () => {
           text: "Hello",
         })
 
-        const assistantMsg: MessageV2.Assistant = {
+        const assistantMsg: Message.Assistant = {
           id: MessageID.ascending(),
           role: "assistant",
           sessionID,

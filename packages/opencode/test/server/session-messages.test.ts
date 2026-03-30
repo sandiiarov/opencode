@@ -3,7 +3,7 @@ import path from "path"
 import { Instance } from "../../src/project/instance"
 import { Server } from "../../src/server/server"
 import { Session } from "../../src/session"
-import { MessageV2 } from "../../src/session/message-v2"
+import { Message } from "../../src/session/message"
 import { MessageID, PartID, type SessionID } from "../../src/session/schema"
 import { Log } from "../../src/util/log"
 
@@ -24,7 +24,7 @@ async function fill(sessionID: SessionID, count: number, time = (i: number) => D
       model: { providerID: "test", modelID: "test" },
       tools: {},
       mode: "",
-    } as unknown as MessageV2.Info)
+    } as unknown as Message.Info)
     await Session.updatePart({
       id: PartID.ascending(),
       sessionID,
@@ -47,7 +47,7 @@ describe("session messages endpoint", () => {
 
         const a = await app.request(`/session/${session.id}/message?limit=2`)
         expect(a.status).toBe(200)
-        const aBody = (await a.json()) as MessageV2.WithParts[]
+        const aBody = (await a.json()) as Message.WithParts[]
         expect(aBody.map((item) => item.info.id)).toEqual(ids.slice(-2))
         const cursor = a.headers.get("x-next-cursor")
         expect(cursor).toBeTruthy()
@@ -55,7 +55,7 @@ describe("session messages endpoint", () => {
 
         const b = await app.request(`/session/${session.id}/message?limit=2&before=${encodeURIComponent(cursor!)}`)
         expect(b.status).toBe(200)
-        const bBody = (await b.json()) as MessageV2.WithParts[]
+        const bBody = (await b.json()) as Message.WithParts[]
         expect(bBody.map((item) => item.info.id)).toEqual(ids.slice(-4, -2))
 
         await Session.remove(session.id)
@@ -73,7 +73,7 @@ describe("session messages endpoint", () => {
 
         const res = await app.request(`/session/${session.id}/message`)
         expect(res.status).toBe(200)
-        const body = (await res.json()) as MessageV2.WithParts[]
+        const body = (await res.json()) as Message.WithParts[]
         expect(body.map((item) => item.info.id)).toEqual(ids)
 
         await Session.remove(session.id)
@@ -109,7 +109,7 @@ describe("session messages endpoint", () => {
 
         const res = await app.request(`/session/${session.id}/message?limit=510`)
         expect(res.status).toBe(200)
-        const body = (await res.json()) as MessageV2.WithParts[]
+        const body = (await res.json()) as Message.WithParts[]
         expect(body).toHaveLength(510)
 
         await Session.remove(session.id)

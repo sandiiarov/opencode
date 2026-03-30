@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test"
-import { MessageV2 } from "../../src/session/message-v2"
+import { Message } from "../../src/session/message"
 import { SessionPrompt } from "../../src/session/prompt"
 import { SessionID, MessageID } from "../../src/session/schema"
 
 describe("structured-output.OutputFormat", () => {
   test("parses text format", () => {
-    const result = MessageV2.Format.safeParse({ type: "text" })
+    const result = Message.Format.safeParse({ type: "text" })
     expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data.type).toBe("text")
@@ -13,7 +13,7 @@ describe("structured-output.OutputFormat", () => {
   })
 
   test("parses json_schema format with defaults", () => {
-    const result = MessageV2.Format.safeParse({
+    const result = Message.Format.safeParse({
       type: "json_schema",
       schema: { type: "object", properties: { name: { type: "string" } } },
     })
@@ -27,7 +27,7 @@ describe("structured-output.OutputFormat", () => {
   })
 
   test("parses json_schema format with custom retryCount", () => {
-    const result = MessageV2.Format.safeParse({
+    const result = Message.Format.safeParse({
       type: "json_schema",
       schema: { type: "object" },
       retryCount: 5,
@@ -39,17 +39,17 @@ describe("structured-output.OutputFormat", () => {
   })
 
   test("rejects invalid type", () => {
-    const result = MessageV2.Format.safeParse({ type: "invalid" })
+    const result = Message.Format.safeParse({ type: "invalid" })
     expect(result.success).toBe(false)
   })
 
   test("rejects json_schema without schema", () => {
-    const result = MessageV2.Format.safeParse({ type: "json_schema" })
+    const result = Message.Format.safeParse({ type: "json_schema" })
     expect(result.success).toBe(false)
   })
 
   test("rejects negative retryCount", () => {
-    const result = MessageV2.Format.safeParse({
+    const result = Message.Format.safeParse({
       type: "json_schema",
       schema: { type: "object" },
       retryCount: -1,
@@ -60,7 +60,7 @@ describe("structured-output.OutputFormat", () => {
 
 describe("structured-output.StructuredOutputError", () => {
   test("creates error with message and retries", () => {
-    const error = new MessageV2.StructuredOutputError({
+    const error = new Message.StructuredOutputError({
       message: "Failed to validate",
       retries: 3,
     })
@@ -71,7 +71,7 @@ describe("structured-output.StructuredOutputError", () => {
   })
 
   test("converts to object correctly", () => {
-    const error = new MessageV2.StructuredOutputError({
+    const error = new Message.StructuredOutputError({
       message: "Test error",
       retries: 2,
     })
@@ -83,19 +83,19 @@ describe("structured-output.StructuredOutputError", () => {
   })
 
   test("isInstance correctly identifies error", () => {
-    const error = new MessageV2.StructuredOutputError({
+    const error = new Message.StructuredOutputError({
       message: "Test",
       retries: 1,
     })
 
-    expect(MessageV2.StructuredOutputError.isInstance(error)).toBe(true)
-    expect(MessageV2.StructuredOutputError.isInstance({ name: "other" })).toBe(false)
+    expect(Message.StructuredOutputError.isInstance(error)).toBe(true)
+    expect(Message.StructuredOutputError.isInstance({ name: "other" })).toBe(false)
   })
 })
 
 describe("structured-output.UserMessage", () => {
   test("user message accepts outputFormat", () => {
-    const result = MessageV2.User.safeParse({
+    const result = Message.User.safeParse({
       id: MessageID.ascending(),
       sessionID: SessionID.descending(),
       role: "user",
@@ -111,7 +111,7 @@ describe("structured-output.UserMessage", () => {
   })
 
   test("user message works without outputFormat (optional)", () => {
-    const result = MessageV2.User.safeParse({
+    const result = Message.User.safeParse({
       id: MessageID.ascending(),
       sessionID: SessionID.descending(),
       role: "user",
@@ -140,7 +140,7 @@ describe("structured-output.AssistantMessage", () => {
   }
 
   test("assistant message accepts structured", () => {
-    const result = MessageV2.Assistant.safeParse({
+    const result = Message.Assistant.safeParse({
       ...baseAssistantMessage,
       structured: { company: "Anthropic", founded: 2021 },
     })
@@ -151,7 +151,7 @@ describe("structured-output.AssistantMessage", () => {
   })
 
   test("assistant message works without structured_output (optional)", () => {
-    const result = MessageV2.Assistant.safeParse(baseAssistantMessage)
+    const result = Message.Assistant.safeParse(baseAssistantMessage)
     expect(result.success).toBe(true)
   })
 })

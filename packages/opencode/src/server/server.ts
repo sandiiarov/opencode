@@ -536,7 +536,6 @@ export namespace Server {
     return result
   }
 
-  /** @deprecated do not use this dumb shit */
   export let url: URL
 
   export function listen(opts: {

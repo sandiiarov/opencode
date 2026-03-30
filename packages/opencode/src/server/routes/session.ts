@@ -4,7 +4,7 @@ import { describeRoute, validator, resolver } from "hono-openapi"
 import { SessionID, MessageID, PartID } from "@/session/schema"
 import z from "zod"
 import { Session } from "../../session"
-import { MessageV2 } from "../../session/message-v2"
+import { Message } from "../../session/message"
 import { SessionPrompt } from "../../session/prompt"
 import { SessionCompaction } from "../../session/compaction"
 import { SessionRevert } from "../../session/revert"
@@ -556,7 +556,7 @@ export const SessionRoutes = lazy(() =>
             description: "List of messages",
             content: {
               "application/json": {
-                schema: resolver(MessageV2.WithParts.array()),
+                schema: resolver(Message.WithParts.array()),
               },
             },
           },
@@ -587,7 +587,7 @@ export const SessionRoutes = lazy(() =>
                 (value) => {
                   if (!value) return true
                   try {
-                    MessageV2.cursor.decode(value)
+                    Message.cursor.decode(value)
                     return true
                   } catch {
                     return false
@@ -616,7 +616,7 @@ export const SessionRoutes = lazy(() =>
           return c.json(messages)
         }
 
-        const page = await MessageV2.page({
+        const page = await Message.page({
           sessionID,
           limit: query.limit,
           before: query.before,
@@ -645,8 +645,8 @@ export const SessionRoutes = lazy(() =>
               "application/json": {
                 schema: resolver(
                   z.object({
-                    info: MessageV2.Info,
-                    parts: MessageV2.Part.array(),
+                    info: Message.Info,
+                    parts: Message.Part.array(),
                   }),
                 ),
               },
@@ -664,7 +664,7 @@ export const SessionRoutes = lazy(() =>
       ),
       async (c) => {
         const params = c.req.valid("param")
-        const message = await MessageV2.get({
+        const message = await Message.get({
           sessionID: params.sessionID,
           messageID: params.messageID,
         })
@@ -752,7 +752,7 @@ export const SessionRoutes = lazy(() =>
             description: "Successfully updated part",
             content: {
               "application/json": {
-                schema: resolver(MessageV2.Part),
+                schema: resolver(Message.Part),
               },
             },
           },
@@ -767,7 +767,7 @@ export const SessionRoutes = lazy(() =>
           partID: PartID.zod,
         }),
       ),
-      validator("json", MessageV2.Part),
+      validator("json", Message.Part),
       async (c) => {
         const params = c.req.valid("param")
         const body = c.req.valid("json")
@@ -793,8 +793,8 @@ export const SessionRoutes = lazy(() =>
               "application/json": {
                 schema: resolver(
                   z.object({
-                    info: MessageV2.Assistant,
-                    parts: MessageV2.Part.array(),
+                    info: Message.Assistant,
+                    parts: Message.Part.array(),
                   }),
                 ),
               },
@@ -871,8 +871,8 @@ export const SessionRoutes = lazy(() =>
               "application/json": {
                 schema: resolver(
                   z.object({
-                    info: MessageV2.Assistant,
-                    parts: MessageV2.Part.array(),
+                    info: Message.Assistant,
+                    parts: Message.Part.array(),
                   }),
                 ),
               },
@@ -906,7 +906,7 @@ export const SessionRoutes = lazy(() =>
             description: "Created message",
             content: {
               "application/json": {
-                schema: resolver(MessageV2.Assistant),
+                schema: resolver(Message.Assistant),
               },
             },
           },
@@ -996,7 +996,6 @@ export const SessionRoutes = lazy(() =>
       "/:sessionID/permissions/:permissionID",
       describeRoute({
         summary: "Respond to permission",
-        deprecated: true,
         description: "Approve or deny a permission request from the AI assistant.",
         operationId: "permission.respond",
         responses: {

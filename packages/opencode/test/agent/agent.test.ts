@@ -245,12 +245,12 @@ test("global permission config applies to all agents", async () => {
   })
 })
 
-test("agent steps/maxSteps config sets steps property", async () => {
+test("agent steps config sets steps property", async () => {
   await using tmp = await tmpdir({
     config: {
       agent: {
         build: { steps: 50 },
-        plan: { maxSteps: 100 },
+        plan: { steps: 100 },
       },
     },
   })
@@ -444,50 +444,6 @@ test("webfetch is allowed by default", async () => {
     fn: async () => {
       const build = await Agent.get("build")
       expect(evalPerm(build, "webfetch")).toBe("allow")
-    },
-  })
-})
-
-test("legacy tools config converts to permissions", async () => {
-  await using tmp = await tmpdir({
-    config: {
-      agent: {
-        build: {
-          tools: {
-            bash: false,
-            read: false,
-          },
-        },
-      },
-    },
-  })
-  await Instance.provide({
-    directory: tmp.path,
-    fn: async () => {
-      const build = await Agent.get("build")
-      expect(evalPerm(build, "bash")).toBe("deny")
-      expect(evalPerm(build, "read")).toBe("deny")
-    },
-  })
-})
-
-test("legacy tools config maps write and edit to edit permission", async () => {
-  await using tmp = await tmpdir({
-    config: {
-      agent: {
-        build: {
-          tools: {
-            write: false,
-          },
-        },
-      },
-    },
-  })
-  await Instance.provide({
-    directory: tmp.path,
-    fn: async () => {
-      const build = await Agent.get("build")
-      expect(evalPerm(build, "edit")).toBe("deny")
     },
   })
 })

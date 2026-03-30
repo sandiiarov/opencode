@@ -4,7 +4,7 @@ import { Session } from "../../src/session"
 import { Bus } from "../../src/bus"
 import { Log } from "../../src/util/log"
 import { Instance } from "../../src/project/instance"
-import { MessageV2 } from "../../src/session/message-v2"
+import { Message } from "../../src/session/message"
 import { MessageID, PartID } from "../../src/session/schema"
 
 const projectRoot = path.join(__dirname, "../..")
@@ -91,10 +91,10 @@ describe("step-finish token propagation via Bus event", () => {
             model: { providerID: "test", modelID: "test" },
             tools: {},
             mode: "",
-          } as unknown as MessageV2.Info)
+          } as unknown as Message.Info)
 
-          let received: MessageV2.Part | undefined
-          const unsub = Bus.subscribe(MessageV2.Event.PartUpdated, (event) => {
+          let received: Message.Part | undefined
+          const unsub = Bus.subscribe(Message.Event.PartUpdated, (event) => {
             received = event.properties.part
           })
 
@@ -122,7 +122,7 @@ describe("step-finish token propagation via Bus event", () => {
 
           expect(received).toBeDefined()
           expect(received!.type).toBe("step-finish")
-          const finish = received as MessageV2.StepFinishPart
+          const finish = received as Message.StepFinishPart
           expect(finish.tokens.input).toBe(500)
           expect(finish.tokens.output).toBe(800)
           expect(finish.tokens.reasoning).toBe(200)

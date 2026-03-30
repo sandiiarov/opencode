@@ -3,21 +3,21 @@ import { ShareNext } from "../../src/share/share-next"
 import { AccessToken, Account, AccountID, OrgID } from "../../src/account"
 import { Config } from "../../src/config/config"
 
-test("ShareNext.request uses legacy share API without active org account", async () => {
+test("ShareNext.request uses shares API without active org account", async () => {
   const originalActive = Account.active
   const originalConfigGet = Config.get
 
   Account.active = mock(async () => undefined)
-  Config.get = mock(async () => ({ enterprise: { url: "https://legacy-share.example.com" } }))
+  Config.get = mock(async () => ({ enterprise: { url: "https://share.example.com" } }))
 
   try {
     const req = await ShareNext.request()
 
-    expect(req.api.create).toBe("/api/share")
-    expect(req.api.sync("shr_123")).toBe("/api/share/shr_123/sync")
-    expect(req.api.remove("shr_123")).toBe("/api/share/shr_123")
-    expect(req.api.data("shr_123")).toBe("/api/share/shr_123/data")
-    expect(req.baseUrl).toBe("https://legacy-share.example.com")
+    expect(req.api.create).toBe("/api/shares")
+    expect(req.api.sync("shr_123")).toBe("/api/shares/shr_123/sync")
+    expect(req.api.remove("shr_123")).toBe("/api/shares/shr_123")
+    expect(req.api.data("shr_123")).toBe("/api/shares/shr_123/data")
+    expect(req.baseUrl).toBe("https://share.example.com")
     expect(req.headers).toEqual({})
   } finally {
     Account.active = originalActive

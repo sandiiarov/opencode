@@ -4,7 +4,7 @@ import { Session } from "."
 import { SessionID, MessageID, PartID } from "./schema"
 import { Instance } from "../project/instance"
 import { Provider } from "../provider/provider"
-import { MessageV2 } from "./message-v2"
+import { Message } from "./message"
 import z from "zod"
 import { Token } from "../util/token"
 import { Log } from "../util/log"
@@ -30,7 +30,7 @@ export namespace SessionCompaction {
 
   const COMPACTION_BUFFER = 20_000
 
-  export async function isOverflow(input: { tokens: MessageV2.Assistant["tokens"]; model: Provider.Model }) {
+  export async function isOverflow(input: { tokens: Message.Assistant["tokens"]; model: Provider.Model }) {
     const config = await Config.get()
     if (config.compaction?.auto === false) return false
     const context = input.model.limit.context
@@ -101,16 +101,16 @@ export namespace SessionCompaction {
 
   export async function process(input: {
     parentID: MessageID
-    messages: MessageV2.WithParts[]
+    messages: Message.WithParts[]
     sessionID: SessionID
     abort: AbortSignal
     auto: boolean
     overflow?: boolean
   }) {
-    const userMessage = input.messages.findLast((m) => m.info.id === input.parentID)!.info as MessageV2.User
+    const userMessage = input.messages.findLast((m) => m.info.id === input.parentID)!.info as Message.User
 
     let messages = input.messages
-    let replay: MessageV2.WithParts | undefined
+    let replay: Message.WithParts | undefined
     if (input.overflow) {
       const idx = input.messages.findIndex((m) => m.info.id === input.parentID)
       for (let i = idx - 1; i >= 0; i--) {
@@ -158,7 +158,7 @@ export namespace SessionCompaction {
       time: {
         created: Date.now(),
       },
-    })) as MessageV2.Assistant
+    })) as Message.Assistant
     const processor = SessionProcessor.create({
       assistantMessage: msg,
       sessionID: input.sessionID,
@@ -210,7 +210,7 @@ When constructing the summary, try to stick to this template:
       tools: {},
       system: [],
       messages: [
-        ...MessageV2.toModelMessages(msgs, model, { stripMedia: true }),
+        ...Message.toModelMessages(msgs, model, { stripMedia: true }),
         {
           role: "user",
           content: [
@@ -225,7 +225,7 @@ When constructing the summary, try to stick to this template:
     })
 
     if (result === "compact") {
-      processor.message.error = new MessageV2.ContextOverflowError({
+      processor.message.error = new Message.ContextOverflowError({
         message: replay
           ? "Conversation history too large to compact - exceeds model context limit"
           : "Session too large to compact - context exceeds model limit even after stripping media",
@@ -237,7 +237,7 @@ When constructing the summary, try to stick to this template:
 
     if (result === "continue" && input.auto) {
       if (replay) {
-        const original = replay.info as MessageV2.User
+        const original = replay.info as Message.User
         const replayMsg = await Session.updateMessage({
           id: MessageID.ascending(),
           role: "user",
@@ -253,7 +253,7 @@ When constructing the summary, try to stick to this template:
         for (const part of replay.parts) {
           if (part.type === "compaction") continue
           const replayPart =
-            part.type === "file" && MessageV2.isMedia(part.mime)
+            part.type === "file" && Message.isMedia(part.mime)
               ? { type: "text" as const, text: `[Attached ${part.mime}: ${part.filename ?? "file"}]` }
               : part
           await Session.updatePart({
