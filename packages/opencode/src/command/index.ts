@@ -5,7 +5,6 @@ import { SessionID, MessageID } from "@/session/schema"
 import { Effect, Layer, ServiceMap } from "effect"
 import z from "zod"
 import { Config } from "../config/config"
-import { MCP } from "../mcp"
 import { Skill } from "../skill"
 import { Log } from "../util/log"
 import PROMPT_INITIALIZE from "./template/initialize.txt"
@@ -36,7 +35,7 @@ export namespace Command {
       description: z.string().optional(),
       agent: z.string().optional(),
       model: z.string().optional(),
-      source: z.enum(["command", "mcp", "skill"]).optional(),
+      source: z.enum(["command", "skill"]).optional(),
       // workaround for zod not supporting async functions natively so we use getters
       // https://zod.dev/v4/changelog?id=zfunction
       template: z.promise(z.string()).or(z.string()),
@@ -111,31 +110,6 @@ export namespace Command {
             },
             subtask: command.subtask,
             hints: hints(command.template),
-          }
-        }
-
-        for (const [name, prompt] of Object.entries(yield* Effect.promise(() => MCP.prompts()))) {
-          commands[name] = {
-            name,
-            source: "mcp",
-            description: prompt.description,
-            get template() {
-              return new Promise<string>(async (resolve, reject) => {
-                const template = await MCP.getPrompt(
-                  prompt.client,
-                  prompt.name,
-                  prompt.arguments
-                    ? Object.fromEntries(prompt.arguments.map((argument, i) => [argument.name, `$${i + 1}`]))
-                    : {},
-                ).catch(reject)
-                resolve(
-                  template?.messages
-                    .map((message) => (message.content.type === "text" ? message.content.text : ""))
-                    .join("\n") || "",
-                )
-              })
-            },
-            hints: prompt.arguments?.map((_, i) => `$${i + 1}`) ?? [],
           }
         }
 

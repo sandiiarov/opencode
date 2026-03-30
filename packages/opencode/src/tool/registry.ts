@@ -110,11 +110,9 @@ export namespace ToolRegistry {
 
       async function all(custom: Tool.Info[]): Promise<Tool.Info[]> {
         const cfg = await Config.get()
-        const question = ["app", "cli", "desktop"].includes(Flag.OPENCODE_CLIENT) || Flag.OPENCODE_ENABLE_QUESTION_TOOL
-
         return [
           InvalidTool,
-          ...(question ? [QuestionTool] : []),
+          QuestionTool,
           BashTool,
           ReadTool,
           GlobTool,

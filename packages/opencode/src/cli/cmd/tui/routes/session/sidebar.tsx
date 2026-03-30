@@ -48,24 +48,10 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
   const messages = createMemo(() => sync.data.message[props.sessionID] ?? [])
 
   const [expanded, setExpanded] = createStore({
-    mcp: true,
     diff: true,
     todo: true,
     lsp: true,
   })
-
-  // Sort MCP servers alphabetically for consistent display order
-  const mcpEntries = createMemo(() => Object.entries(sync.data.mcp).sort(([a], [b]) => a.localeCompare(b)))
-
-  // Count connected and error MCP servers for collapsed header display
-  const connectedMcpCount = createMemo(() => mcpEntries().filter(([_, item]) => item.status === "connected").length)
-  const errorMcpCount = createMemo(
-    () =>
-      mcpEntries().filter(
-        ([_, item]) =>
-          item.status === "failed" || item.status === "needs_auth" || item.status === "needs_client_registration",
-      ).length,
-  )
 
   const cost = createMemo(() => {
     const total = messages().reduce((sum, x) => sum + (x.role === "assistant" ? x.cost : 0), 0)
@@ -136,67 +122,6 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
               <text fg={contextFg()}>{bar()}</text>
             </box>
           </box>
-          <Show when={mcpEntries().length > 0}>
-            <box flexShrink={0}>
-              <box
-                flexDirection="row"
-                gap={1}
-                onMouseDown={() => mcpEntries().length > 2 && setExpanded("mcp", !expanded.mcp)}
-              >
-                <Show when={mcpEntries().length > 2}>
-                  <text fg={theme.text}>{expanded.mcp ? CHEVRON_DOWN : CHEVRON_RIGHT}</text>
-                </Show>
-                <text fg={theme.text}>
-                  <b>MCP</b>
-                  <Show when={!expanded.mcp}>
-                    <span style={{ fg: theme.textMuted }}>
-                      {" "}
-                      ({connectedMcpCount()} active
-                      {errorMcpCount() > 0 ? `, ${errorMcpCount()} error${errorMcpCount() > 1 ? "s" : ""}` : ""})
-                    </span>
-                  </Show>
-                </text>
-              </box>
-              <Show when={mcpEntries().length <= 2 || expanded.mcp}>
-                <For each={mcpEntries()}>
-                  {([key, item]) => (
-                    <box flexDirection="row" gap={1}>
-                      <text
-                        flexShrink={0}
-                        style={{
-                          fg: (
-                            {
-                              connected: theme.success,
-                              failed: theme.error,
-                              disabled: theme.textMuted,
-                              needs_auth: theme.warning,
-                              needs_client_registration: theme.error,
-                            } as Record<string, typeof theme.success>
-                          )[item.status],
-                        }}
-                      >
-                        {item.status === "connected" ? STATUS_ON_MARK : STATUS_OFF_MARK}
-                      </text>
-                      <text fg={theme.text} wrapMode="word">
-                        {key}{" "}
-                        <span style={{ fg: theme.textMuted }}>
-                          <Switch fallback={item.status}>
-                            <Match when={item.status === "connected"}>Connected</Match>
-                            <Match when={item.status === "failed" && item}>{(val) => <i>{val().error}</i>}</Match>
-                            <Match when={item.status === "disabled"}>Disabled</Match>
-                            <Match when={(item.status as string) === "needs_auth"}>Needs auth</Match>
-                            <Match when={(item.status as string) === "needs_client_registration"}>
-                              Needs client ID
-                            </Match>
-                          </Switch>
-                        </span>
-                      </text>
-                    </box>
-                  )}
-                </For>
-              </Show>
-            </box>
-          </Show>
           <box flexShrink={0}>
             <box
               flexDirection="row"

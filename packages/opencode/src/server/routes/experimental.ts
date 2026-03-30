@@ -6,7 +6,6 @@ import { ToolRegistry } from "../../tool/registry"
 import { Worktree } from "../../worktree"
 import { Instance } from "../../project/instance"
 import { Project } from "../../project/project"
-import { MCP } from "../../mcp"
 import { Session } from "../../session"
 import { zodToJsonSchema } from "zod-to-json-schema"
 import { errors } from "../error"
@@ -245,27 +244,6 @@ export const ExperimentalRoutes = lazy(() =>
           c.header("x-next-cursor", String(list[list.length - 1].time.updated))
         }
         return c.json(list)
-      },
-    )
-    .get(
-      "/resource",
-      describeRoute({
-        summary: "Get MCP resources",
-        description: "Get all available MCP resources from connected servers. Optionally filter by name.",
-        operationId: "experimental.resource.list",
-        responses: {
-          200: {
-            description: "MCP resources",
-            content: {
-              "application/json": {
-                schema: resolver(z.record(z.string(), MCP.Resource)),
-              },
-            },
-          },
-        },
-      }),
-      async (c) => {
-        return c.json(await MCP.resources())
       },
     ),
 )

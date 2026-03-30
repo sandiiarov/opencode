@@ -45,7 +45,6 @@
     "vscode-languageserver-types": "3.17.5"
   },
   "dependencies": {
-    "@agentclientprotocol/sdk": "0.14.1",
     "@ai-sdk/amazon-bedrock": "3.0.82",
     "@ai-sdk/anthropic": "2.0.65",
     "@ai-sdk/azure": "2.0.91",
@@ -69,7 +68,6 @@
     "@clack/prompts": "1.0.0-alpha.1",
     "@effect/platform-node": "catalog:",
     "@hono/standard-validator": "0.1.5",
-    "@modelcontextprotocol/sdk": "1.25.2",
     "@opencode-ai/plugin": "workspace:*",
     "@opencode-ai/sdk": "workspace:*",
     "@opencode-ai/util": "workspace:*",

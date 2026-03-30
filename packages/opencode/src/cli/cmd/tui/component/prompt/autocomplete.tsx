@@ -295,42 +295,6 @@ export function Autocomplete(props: {
     },
   )
 
-  const mcpResources = createMemo(() => {
-    if (!store.visible || store.visible === "/") return []
-
-    const options: AutocompleteOption[] = []
-    const width = props.anchor().width - 4
-
-    for (const res of Object.values(sync.data.mcp_resource)) {
-      const text = `${res.name} (${res.uri})`
-      options.push({
-        display: Locale.truncateMiddle(text, width),
-        value: text,
-        description: res.description,
-        onSelect: () => {
-          insertPart(res.name, {
-            type: "file",
-            mime: res.mimeType ?? "text/plain",
-            filename: res.name,
-            url: res.uri,
-            source: {
-              type: "resource",
-              text: {
-                start: 0,
-                end: 0,
-                value: "",
-              },
-              clientName: res.client,
-              uri: res.uri,
-            },
-          })
-        },
-      })
-    }
-
-    return options
-  })
-
   const agents = createMemo(() => {
     const agents = sync.data.agent
     return agents
@@ -358,9 +322,8 @@ export function Autocomplete(props: {
 
     for (const serverCommand of sync.data.command) {
       if (serverCommand.source === "skill") continue
-      const label = serverCommand.source === "mcp" ? ":mcp" : ""
       results.push({
-        display: "/" + serverCommand.name + label,
+        display: "/" + serverCommand.name,
         description: serverCommand.description,
         onSelect: () => {
           const newText = "/" + serverCommand.name + " "
@@ -388,7 +351,7 @@ export function Autocomplete(props: {
     const commandsValue = commands()
 
     const mixed: AutocompleteOption[] =
-      store.visible === "@" ? [...agentsValue, ...(filesValue || []), ...mcpResources()] : [...commandsValue]
+      store.visible === "@" ? [...agentsValue, ...(filesValue || [])] : [...commandsValue]
 
     const searchValue = search()
 

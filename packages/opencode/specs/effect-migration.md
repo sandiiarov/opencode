@@ -175,4 +175,3 @@ Still open and likely worth migrating:
 - [ ] `Provider`
 - [x] `Project`
 - [ ] `LSP`
-- [ ] `MCP`
