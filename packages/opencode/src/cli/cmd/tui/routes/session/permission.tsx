@@ -27,6 +27,7 @@ import {
   WARN_MARK,
   WRITE_MARK,
 } from "./icons"
+import { EDIT_MARK, EXTERNAL_DIR_MARK } from "../../icons"
 type PermissionStage = "permission" | "always" | "reject"
 
 function normalizePath(input?: string) {
@@ -223,7 +224,7 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
               const raw = props.request.metadata?.filepath
               const filepath = typeof raw === "string" ? raw : ""
               return {
-                icon: WRITE_MARK,
+                icon: EDIT_MARK,
                 title: `Edit ${normalizePath(filepath)}`,
                 body: <EditBody request={props.request} />,
               }
@@ -384,7 +385,7 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
               const patterns = (props.request.patterns ?? []).filter((p): p is string => typeof p === "string")
 
               return {
-                icon: WRITE_MARK,
+                icon: EXTERNAL_DIR_MARK,
                 title: `Access external directory ${dir}`,
                 body: (
                   <Show when={patterns.length > 0}>

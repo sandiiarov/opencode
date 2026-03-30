@@ -35,6 +35,7 @@ import {
   DIAG_HINT_MARK,
   DIAG_INFO_MARK,
   DIAG_WARN_MARK,
+  EDIT_MARK,
   STATUS_OFF_MARK,
   STATUS_ON_MARK,
 } from "../../icons"
@@ -2204,7 +2205,7 @@ function Edit(props: ToolProps<typeof EditTool>) {
     <Switch>
       <Match when={props.metadata.diff !== undefined}>
         <BlockTool
-          icon={WRITE_MARK}
+          icon={EDIT_MARK}
           title={
             <>
               Edit <FileLabel path={normalizePath(props.input.filePath!)} />
@@ -2238,7 +2239,7 @@ function Edit(props: ToolProps<typeof EditTool>) {
         </BlockTool>
       </Match>
       <Match when={true}>
-        <InlineTool icon={WRITE_MARK} pending="Preparing edit..." complete={props.input.filePath} part={props.part}>
+        <InlineTool icon={EDIT_MARK} pending="Preparing edit..." complete={props.input.filePath} part={props.part}>
           Edit <FileLabel path={normalizePath(props.input.filePath!)} />
         </InlineTool>
       </Match>
