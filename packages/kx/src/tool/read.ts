@@ -11,7 +11,7 @@ import { Instance } from "../project/instance"
 import { assertExternalDirectory } from "./external-directory"
 import { InstructionPrompt } from "../session/instruction"
 import { Filesystem } from "../util/filesystem"
-import { formatHashLine } from "./hashline"
+import { formatFileLine } from "./hashline"
 
 const DEFAULT_READ_LIMIT = 2000
 const MAX_LINE_LENGTH = 2000
@@ -193,7 +193,8 @@ export const ReadTool = Tool.define("read", {
       throw new Error(`Offset ${offset} is out of range for this file (${lines} lines)`)
     }
 
-    const content = raw.map((line, index) => formatHashLine(index + offset, line.source, line.display))
+    const source = raw.map((line) => line.source)
+    const content = raw.map((line, index) => formatFileLine(source, index, line.display, index + offset))
     const preview = raw
       .slice(0, 20)
       .map((line) => line.display)

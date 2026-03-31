@@ -7,7 +7,7 @@ Usage:
 - To read later sections, call this tool again with a larger offset.
 - Use the grep tool to find specific content in large files or files with long lines.
 - If you are unsure of the correct file path, use the glob tool to look up filenames by glob pattern.
-- Text file contents are returned with hashline anchors in `{line}#{id}|{content}` format. Copy `{line}#{id}` exactly when using the edit tool. For directories, entries are returned one per line (without line numbers) with a trailing `/` for subdirectories.
+- Text file contents are returned with stable hashline anchors in `{line}#{id}@{anchor}|{content}` format. Reuse the full anchor token when using the edit tool. For directories, entries are returned one per line (without line numbers) with a trailing `/` for subdirectories.
 - This tool returns `metadata.version`. Reuse that version in later `edit` or `write` calls via `expectedVersion` to avoid redundant reads.
 - After `edit` or `write`, prefer the returned `Updated lines` anchors for follow-up edits before re-reading.
 - Directory, image, and PDF reads return an empty `metadata.version`; only reuse version tokens from text-file reads or later `edit`/`write` results.

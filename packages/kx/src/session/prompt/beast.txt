@@ -132,7 +132,7 @@ If the user asks you to remember something or add something to your memory, you 
   - You have made edits to the file or folder.
   - You encounter an error that suggests the context may be stale or incomplete.
 - Use your internal memory and previous context to avoid redundant reads.
-- Prefer reusing fresh hashline anchors and version tokens from prior `read`, `grep`, `edit`, or `write` results before re-reading. Pass `expectedVersion` when you have it, and only re-read when you need more context or freshness recovery.
+- Prefer reusing fresh stable anchors and version tokens from prior `read`, `grep`, `edit`, or `write` results before re-reading. Pass `expectedVersion` when you have it, and only re-read when you need more context, the anchor is ambiguous, or freshness recovery.
 - This will save time, reduce unnecessary operations, and make your workflow more efficient.
 
 # Writing Prompts

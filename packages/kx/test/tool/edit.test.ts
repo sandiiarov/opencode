@@ -41,7 +41,7 @@ function lineRef(output: string, line: number) {
 }
 
 describe("tool.edit", () => {
-  test("replaces a line using hashline anchors", async () => {
+  test("replaces a line using stable anchors", async () => {
     await using tmp = await tmpdir()
     const file = path.join(tmp.path, "file.txt")
     await fs.writeFile(file, "one\ntwo\nthree\n", "utf-8")
@@ -535,6 +535,96 @@ describe("tool.edit", () => {
             "}",
             "",
           ].join("\n"),
+        )
+      },
+    })
+  })
+
+  test("reuses original read anchors after line shifts", async () => {
+    await using tmp = await tmpdir()
+    const file = path.join(tmp.path, "file.txt")
+    await fs.writeFile(file, ["Aad", "adkad", "askdlj", "adaskjas", ""].join("\n"), "utf-8")
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const read = await ReadTool.init()
+        const snapshot = await read.execute({ filePath: file }, ctx)
+        const second = lineRef(snapshot.output, 2)
+        const third = lineRef(snapshot.output, 3)
+        const tail = lineRef(snapshot.output, 4)
+
+        const edit = await EditTool.init()
+        const first = await edit.execute(
+          {
+            filePath: file,
+            expectedVersion: snapshot.metadata.version,
+            edits: [
+              {
+                op: "replace",
+                pos: second,
+                end: third,
+                lines: ["two", "three", "four", "five"],
+              },
+            ],
+          },
+          ctx,
+        )
+
+        await edit.execute(
+          {
+            filePath: file,
+            expectedVersion: first.metadata.version,
+            edits: [{ op: "replace", pos: tail, lines: ["tail"] }],
+          },
+          ctx,
+        )
+
+        expect(await fs.readFile(file, "utf-8")).toBe(["Aad", "two", "three", "four", "five", "tail", ""].join("\n"))
+      },
+    })
+  })
+
+  test("relocates stable anchors for punctuation-only lines", async () => {
+    await using tmp = await tmpdir()
+    const file = path.join(tmp.path, "file.ts")
+    await fs.writeFile(file, ["const x = () => {", "  run()", "}", "after()", ""].join("\n"), "utf-8")
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const read = await ReadTool.init()
+        const snapshot = await read.execute({ filePath: file }, ctx)
+        const body = lineRef(snapshot.output, 2)
+        const close = lineRef(snapshot.output, 3)
+
+        const edit = await EditTool.init()
+        const first = await edit.execute(
+          {
+            filePath: file,
+            expectedVersion: snapshot.metadata.version,
+            edits: [
+              {
+                op: "replace",
+                pos: body,
+                lines: ["  run()", "  more()", "  done()"],
+              },
+            ],
+          },
+          ctx,
+        )
+
+        await edit.execute(
+          {
+            filePath: file,
+            expectedVersion: first.metadata.version,
+            edits: [{ op: "prepend", pos: close, lines: ["  cleanup()"] }],
+          },
+          ctx,
+        )
+
+        expect(await fs.readFile(file, "utf-8")).toBe(
+          ["const x = () => {", "  run()", "  more()", "  done()", "  cleanup()", "}", "after()", ""].join("\n"),
         )
       },
     })

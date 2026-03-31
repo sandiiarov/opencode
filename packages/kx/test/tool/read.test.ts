@@ -263,7 +263,7 @@ describe("tool.read truncation", () => {
     })
   })
 
-  test("returns hashline anchors for text files", async () => {
+  test("returns stable anchors for text files", async () => {
     await using tmp = await tmpdir({
       init: async (dir) => {
         await Bun.write(path.join(dir, "small.txt"), "alpha\nbeta\n")
@@ -274,8 +274,8 @@ describe("tool.read truncation", () => {
       fn: async () => {
         const read = await ReadTool.init()
         const result = await read.execute({ filePath: path.join(tmp.path, "small.txt") }, ctx)
-        expect(result.output).toContain(`1#${computeLineHash(1, "alpha")}|alpha`)
-        expect(result.output).toContain(`2#${computeLineHash(2, "beta")}|beta`)
+        expect(result.output).toContain(`1#${computeLineHash(1, "alpha")}@`)
+        expect(result.output).toContain(`2#${computeLineHash(2, "beta")}@`)
       },
     })
   })
@@ -292,10 +292,10 @@ describe("tool.read truncation", () => {
       fn: async () => {
         const read = await ReadTool.init()
         const result = await read.execute({ filePath: path.join(tmp.path, "offset.txt"), offset: 10, limit: 5 }, ctx)
-        expect(result.output).toContain(`10#${computeLineHash(10, "line10")}|line10`)
-        expect(result.output).toContain(`14#${computeLineHash(14, "line14")}|line14`)
-        expect(result.output).not.toContain(`9#${computeLineHash(9, "line10")}|line10`)
-        expect(result.output).not.toContain(`15#${computeLineHash(15, "line15")}|line15`)
+        expect(result.output).toContain(`10#${computeLineHash(10, "line10")}@`)
+        expect(result.output).toContain(`14#${computeLineHash(14, "line14")}@`)
+        expect(result.output).not.toContain(`9#${computeLineHash(9, "line10")}@`)
+        expect(result.output).not.toContain(`15#${computeLineHash(15, "line15")}@`)
         expect(result.output).toContain("line10")
         expect(result.output).toContain("line14")
         expect(result.output).not.toContain("line0")
@@ -387,9 +387,8 @@ describe("tool.read truncation", () => {
       fn: async () => {
         const read = await ReadTool.init()
         const result = await read.execute({ filePath: path.join(tmp.path, "long-line.txt") }, ctx)
-        expect(result.output).toContain(
-          `1#${computeLineHash(1, longLine)}|${longLine.slice(0, 2000)}... (line truncated to 2000 chars)`,
-        )
+        expect(result.output).toContain(`1#${computeLineHash(1, longLine)}@`)
+        expect(result.output).toContain(`${longLine.slice(0, 2000)}... (line truncated to 2000 chars)`)
         expect(result.output.length).toBeLessThan(3000)
       },
     })

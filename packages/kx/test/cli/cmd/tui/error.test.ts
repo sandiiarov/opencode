@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test"
 import { summarizeToolError } from "../../../../src/cli/cmd/tui/error"
 
 describe("tui tool error", () => {
-  test("keeps only the short summary for hashline mismatch errors", () => {
+  test("keeps only the short summary for anchor mismatch errors", () => {
     const error = [
-      "2 lines have changed since last read. Use updated {line_number}#{hash_id} references below (>>> marks changed lines).",
+      "2 lines have changed since last read. Use updated anchors below (>>> marks changed lines).",
       "",
       '    13#VT|import { trimDiff } from "./edit"',
     ].join("\n")

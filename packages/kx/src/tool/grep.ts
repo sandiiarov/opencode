@@ -9,10 +9,26 @@ import DESCRIPTION from "./grep.txt"
 import { Instance } from "../project/instance"
 import path from "path"
 import { assertExternalDirectory } from "./external-directory"
-import { formatHashLine } from "./hashline"
+import { formatFileLine } from "./hashline"
 import { FileTime } from "../file/time"
 
 const MAX_LINE_LENGTH = 2000
+
+type Match = {
+  path: string
+  modTime: number
+  lineNum: number
+  lineText: string
+}
+
+async function fileLines(file: string, cache: Map<string, string[]>) {
+  const hit = cache.get(file)
+  if (hit) return hit
+  const text = await Filesystem.readText(file)
+  const list = text.split(/\r?\n/)
+  cache.set(file, list)
+  return list
+}
 
 export const GrepTool = Tool.define("grep", {
   description: DESCRIPTION,
@@ -80,10 +96,10 @@ export const GrepTool = Tool.define("grep", {
     const hasErrors = exitCode === 2
 
     // Handle both Unix (\n) and Windows (\r\n) line endings
-    const lines = output.trim().split(/\r?\n/)
-    const matches = []
+    const rows = output.trim().split(/\r?\n/)
+    const matches = [] as Match[]
 
-    for (const line of lines) {
+    for (const line of rows) {
       if (!line) continue
 
       const [filePath, lineNumStr, ...lineTextParts] = line.split("|")
@@ -125,6 +141,7 @@ export const GrepTool = Tool.define("grep", {
       files.map(async (file) => [file, await FileTime.read(ctx.sessionID, file)] as const),
     )
     const versions = Object.fromEntries(versionEntries)
+    const cache = new Map<string, string[]>()
 
     let currentFile = ""
     for (const match of finalMatches) {
@@ -135,9 +152,10 @@ export const GrepTool = Tool.define("grep", {
         currentFile = match.path
         outputLines.push(`${match.path}:`)
       }
+      const fileLinesList = await fileLines(match.path, cache)
       const truncatedLineText =
         match.lineText.length > MAX_LINE_LENGTH ? match.lineText.substring(0, MAX_LINE_LENGTH) + "..." : match.lineText
-      outputLines.push(`  ${formatHashLine(match.lineNum, match.lineText, truncatedLineText)}`)
+      outputLines.push(`  ${formatFileLine(fileLinesList, match.lineNum - 1, truncatedLineText, match.lineNum)}`)
     }
 
     if (truncated) {

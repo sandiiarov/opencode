@@ -1,9 +1,16 @@
 const NIBBLE = "ZPMQVRWSNKTXJBYH"
 const HASH = Array.from({ length: 256 }, (_, i) => `${NIBBLE[i >>> 4]}${NIBBLE[i & 0x0f]}`)
-const REF = /^([0-9]+)#([ZPMQVRWSNKTXJBYH]{2})$/
-const OUT = /^(\s*(?:>>>\s*)?)([0-9]+)#([ZPMQVRWSNKTXJBYH]{2})\|(.*)$/
+const REF = /^([0-9]+)#([ZPMQVRWSNKTXJBYH]{2})(?:@([A-Za-z0-9_-]+))?$/
+const OUT = /^(\s*(?:>>>\s*)?)([0-9]+)#([ZPMQVRWSNKTXJBYH]{2})(?:@([A-Za-z0-9_-]+))?\|(.*)$/
 const DIAGNOSTIC_REF = /\[(\d+)#[ZPMQVRWSNKTXJBYH]{2}(?::(\d+))?\]/g
 const WORD = /[\p{L}\p{N}]/u
+
+type Anchor = {
+  text: string
+  before: string
+  after: string
+  ordinal: number
+}
 
 export type Edit =
   | { op: "replace"; pos: string; end?: string; lines: string | string[] | null }
@@ -13,6 +20,7 @@ export type Edit =
 type Ref = {
   line: number
   hash: string
+  anchor?: Anchor
 }
 
 type Mismatch = {
@@ -20,14 +28,70 @@ type Mismatch = {
   hash: string
 }
 
+type Resolved =
+  | { op: "replace"; start: number; end: number; lines: string | string[] | null }
+  | { op: "append"; line?: number; lines: string | string[] | null }
+  | { op: "prepend"; line?: number; lines: string | string[] | null }
+
 export function computeLineHash(line: number, content: string) {
   const text = content.replace(/\r/g, "").trimEnd()
   const seed = WORD.test(text) ? 0 : line
   return HASH[Bun.hash.xxHash32(text, seed) % 256]
 }
 
-export function formatHashLine(line: number, content: string, display = content) {
-  return `${line}#${computeLineHash(line, content)}|${display}`
+function stableText(content: string) {
+  return content.replace(/\r/g, "").trimEnd()
+}
+
+function stableHash(content: string) {
+  return Bun.hash.xxHash32(stableText(content), 0).toString(36)
+}
+
+function ordinal(lines: string[], index: number) {
+  const hash = stableHash(lines[index] ?? "")
+  let seen = 0
+  for (let i = 0; i <= index; i++) {
+    if (stableHash(lines[i] ?? "") === hash) seen++
+  }
+  return seen
+}
+
+function encode(anchor: Anchor) {
+  return Buffer.from(JSON.stringify(anchor)).toString("base64url")
+}
+
+function decode(token: string) {
+  try {
+    const json = Buffer.from(token, "base64url").toString("utf-8")
+    const value = JSON.parse(json)
+    if (
+      typeof value === "object" &&
+      value &&
+      typeof value.text === "string" &&
+      typeof value.before === "string" &&
+      typeof value.after === "string" &&
+      typeof value.ordinal === "number"
+    ) {
+      return value as Anchor
+    }
+  } catch {}
+}
+
+function anchor(lines: string[], index: number) {
+  return encode({
+    text: stableHash(lines[index] ?? ""),
+    before: index > 0 ? stableHash(lines[index - 1] ?? "") : "",
+    after: index + 1 < lines.length ? stableHash(lines[index + 1] ?? "") : "",
+    ordinal: ordinal(lines, index),
+  })
+}
+
+export function formatHashLine(line: number, content: string, display = content, token?: string) {
+  return `${line}#${computeLineHash(line, content)}${token ? `@${token}` : ""}|${display}`
+}
+
+export function formatFileLine(lines: string[], index: number, display = lines[index] ?? "", line = index + 1) {
+  return formatHashLine(line, lines[index] ?? "", display, anchor(lines, index))
 }
 
 export function renderNumberedOutput(text: string) {
@@ -35,7 +99,7 @@ export function renderNumberedOutput(text: string) {
     .split("\n")
     .map((line) => {
       const match = line.match(OUT)
-      if (match) return `${match[1]}${match[2]}: ${match[4]}`
+      if (match) return `${match[1]}${match[2]}: ${match[5]}`
       return line.replace(DIAGNOSTIC_REF, (_, row: string, col?: string) => `[${row}${col ? `:${col}` : ""}]`)
     })
     .join("\n")
@@ -65,7 +129,7 @@ export function changedPreview(before: string, after: string) {
 
   for (let i = from; i <= to; i++) {
     const mark = i >= start && i <= nextEnd ? ">>> " : ""
-    out.push(`${mark}${formatHashLine(i + 1, next[i])}`)
+    out.push(`${mark}${formatFileLine(next, i)}`)
   }
 
   if (to < next.length - 1) out.push("...")
@@ -85,11 +149,14 @@ function parse(ref: string) {
     .replace(/\|.*$/, "")
   const match = text.match(REF)
   if (!match) {
-    throw new Error(`Invalid line reference format: \"${ref}\". Expected format: \"{line_number}#{hash_id}\"`)
+    throw new Error(
+      `Invalid line reference format: \"${ref}\". Expected format: \"{line_number}#{hash_id}\" or \"{line_number}#{hash_id}@{anchor}\"`,
+    )
   }
   return {
     line: Number.parseInt(match[1], 10),
     hash: match[2],
+    anchor: match[3] ? decode(match[3]) : undefined,
   } satisfies Ref
 }
 
@@ -102,29 +169,81 @@ function fail(lines: string[], items: Mismatch[]) {
     for (let line = low; line <= high; line++) show.add(line)
   }
   const out = [
-    `${items.length} line${items.length === 1 ? " has" : "s have"} changed since last read. Use updated {line_number}#{hash_id} references below (>>> marks changed lines).`,
+    `${items.length} line${items.length === 1 ? " has" : "s have"} changed since last read. Use updated anchors below (>>> marks changed lines).`,
     "",
   ]
   let prev = 0
   for (const line of [...show].sort((a, b) => a - b)) {
     if (prev && line > prev + 1) out.push("    ...")
     prev = line
-    const text = `${line}#${computeLineHash(line, lines[line - 1] ?? "")}|${lines[line - 1] ?? ""}`
-    out.push(`${wanted.has(line) ? ">>>" : "   "} ${text}`)
+    out.push(`${wanted.has(line) ? ">>>" : "   "} ${formatFileLine(lines, line - 1)}`)
   }
   throw new Error(out.join("\n"))
 }
 
-function check(lines: string[], refs: string[]) {
-  const bad: Mismatch[] = []
-  for (const ref of refs) {
-    const item = parse(ref)
-    if (item.line < 1 || item.line > lines.length) {
-      throw new Error(`Line number ${item.line} out of bounds. File has ${lines.length} lines.`)
-    }
-    if (computeLineHash(item.line, lines[item.line - 1] ?? "") !== item.hash) bad.push(item)
+function candidate(lines: string[], ref: Ref, line: number) {
+  if (line < 1 || line > lines.length || !ref.anchor) return
+  const index = line - 1
+  const current = lines[index] ?? ""
+  if (stableHash(current) !== ref.anchor.text) return
+  const prev = index > 0 ? stableHash(lines[index - 1] ?? "") : ""
+  const next = index + 1 < lines.length ? stableHash(lines[index + 1] ?? "") : ""
+  const ord = ordinal(lines, index)
+  let score = 0
+  if (ref.anchor.before === prev) score += 3
+  if (ref.anchor.after === next) score += 3
+  if (ref.anchor.ordinal === ord) score += 2
+  score -= Math.min(Math.abs(line - ref.line), 1000) / 1000
+  return { line, score }
+}
+
+function resolve(lines: string[], ref: string) {
+  const item = parse(ref)
+  if (item.line >= 1 && item.line <= lines.length) {
+    if (computeLineHash(item.line, lines[item.line - 1] ?? "") === item.hash) return item.line
   }
+  if (!item.anchor) return item
+
+  const hits = [] as Array<{ line: number; score: number }>
+  for (let line = 1; line <= lines.length; line++) {
+    const match = candidate(lines, item, line)
+    if (match) hits.push(match)
+  }
+  if (hits.length === 0) return item
+  hits.sort((a, b) => b.score - a.score || a.line - b.line)
+  if (hits.length === 1) return hits[0].line
+  if (hits[0].score > hits[1].score) return hits[0].line
+  return item
+}
+
+function resolveEdits(lines: string[], edits: Edit[]) {
+  const bad: Mismatch[] = []
+  const list = edits.map((edit) => {
+    if (edit.op === "append" && !edit.pos) return { op: "append", lines: edit.lines } satisfies Resolved
+    if (edit.op === "prepend" && !edit.pos) return { op: "prepend", lines: edit.lines } satisfies Resolved
+    if (edit.op === "append") {
+      const line = resolve(lines, edit.pos!)
+      if (typeof line !== "number") bad.push(line)
+      return { op: "append", line: typeof line === "number" ? line : undefined, lines: edit.lines } satisfies Resolved
+    }
+    if (edit.op === "prepend") {
+      const line = resolve(lines, edit.pos!)
+      if (typeof line !== "number") bad.push(line)
+      return { op: "prepend", line: typeof line === "number" ? line : undefined, lines: edit.lines } satisfies Resolved
+    }
+    const start = resolve(lines, edit.pos)
+    const end = resolve(lines, edit.end ?? edit.pos)
+    if (typeof start !== "number") bad.push(start)
+    if (typeof end !== "number") bad.push(end)
+    return {
+      op: "replace",
+      start: typeof start === "number" ? start : Number.NaN,
+      end: typeof end === "number" ? end : Number.NaN,
+      lines: edit.lines,
+    } satisfies Resolved
+  })
   if (bad.length) fail(lines, bad)
+  return list
 }
 
 function clean(lines: string | string[] | null) {
@@ -135,13 +254,13 @@ function clean(lines: string | string[] | null) {
   for (const line of list) {
     if (!line) continue
     seen++
-    if (/^\s*(?:>>>\s*)?\d+#[ZPMQVRWSNKTXJBYH]{2}\|/.test(line)) hash++
+    if (/^\s*(?:>>>\s*)?\d+#[ZPMQVRWSNKTXJBYH]{2}(?:@[A-Za-z0-9_-]+)?\|/.test(line)) hash++
     if (/^\+(?!\+)/.test(line)) diff++
   }
   const stripHash = seen > 0 && hash >= seen / 2
   const stripDiff = !stripHash && seen > 0 && diff >= seen / 2
   return list.map((line) => {
-    if (stripHash) return line.replace(/^\s*(?:>>>\s*)?\d+#[ZPMQVRWSNKTXJBYH]{2}\|/, "")
+    if (stripHash) return line.replace(/^\s*(?:>>>\s*)?\d+#[ZPMQVRWSNKTXJBYH]{2}(?:@[A-Za-z0-9_-]+)?\|/, "")
     if (stripDiff) return line.replace(/^\+(?!\+)/, "")
     return line
   })
@@ -164,25 +283,16 @@ function indent(base: string, line: string) {
   return match + line
 }
 
-function refs(edits: Edit[]) {
-  return edits.flatMap((edit) => {
-    if (edit.op === "replace") return edit.end ? [edit.pos, edit.end] : [edit.pos]
-    return edit.pos ? [edit.pos] : []
-  })
+function target(edit: Resolved) {
+  if (edit.op === "replace") return edit.end
+  return edit.line ?? Number.NEGATIVE_INFINITY
 }
 
-function target(edit: Edit) {
-  if (edit.op === "replace") return parse(edit.end ?? edit.pos).line
-  return edit.pos ? parse(edit.pos).line : Number.NEGATIVE_INFINITY
-}
-
-function overlap(edits: Edit[]) {
+function overlap(edits: Resolved[]) {
   const list = edits
     .map((edit, i) => {
-      if (edit.op !== "replace" || !edit.end) return
-      const start = parse(edit.pos).line
-      const end = parse(edit.end).line
-      return { start, end, i }
+      if (edit.op !== "replace") return
+      return { start: edit.start, end: edit.end, i }
     })
     .filter((item): item is { start: number; end: number; i: number } => Boolean(item))
     .sort((a, b) => a.start - b.start || a.end - b.end)
@@ -209,9 +319,9 @@ export function canCreate(edits: Edit[]) {
 
 export function apply(content: string, edits: Edit[]) {
   const base = content === "" ? [] : content.split("\n")
-  check(base, refs(edits))
-  overlap(edits)
-  const list = [...edits].sort((a, b) => {
+  const resolved = resolveEdits(base, edits)
+  overlap(resolved)
+  const list = [...resolved].sort((a, b) => {
     const line = target(b) - target(a)
     if (line) return line
     const rank = { replace: 0, append: 1, prepend: 2 }
@@ -219,40 +329,40 @@ export function apply(content: string, edits: Edit[]) {
   })
   let lines = [...base]
   for (const edit of list) {
-    if (edit.op === "append" && !edit.pos) {
+    if (edit.op === "append" && !edit.line) {
       const add = clean(edit.lines)
       if (!add.length) throw new Error("append requires non-empty lines")
       lines = [...lines, ...add]
       continue
     }
-    if (edit.op === "prepend" && !edit.pos) {
+    if (edit.op === "prepend" && !edit.line) {
       const add = clean(edit.lines)
       if (!add.length) throw new Error("prepend requires non-empty lines")
       lines = [...add, ...lines]
       continue
     }
     if (edit.op === "append") {
-      const ref = parse(edit.pos!)
+      const line = edit.line!
       let add = clean(edit.lines)
-      if (!add.length) throw new Error(`append requires non-empty lines for ${edit.pos}`)
-      if (canTrimFirst(lines[ref.line - 1] ?? "", add)) add = add.slice(1)
-      if (canTrimLast(lines[ref.line] ?? "", add)) add = add.slice(0, -1)
-      if (!add.length) throw new Error(`append requires non-empty lines for ${edit.pos}`)
-      lines.splice(ref.line, 0, ...add)
+      if (!add.length) throw new Error("append requires non-empty lines")
+      if (canTrimFirst(lines[line - 1] ?? "", add)) add = add.slice(1)
+      if (canTrimLast(lines[line] ?? "", add)) add = add.slice(0, -1)
+      if (!add.length) throw new Error("append requires non-empty lines")
+      lines.splice(line, 0, ...add)
       continue
     }
     if (edit.op === "prepend") {
-      const ref = parse(edit.pos!)
+      const line = edit.line!
       let add = clean(edit.lines)
-      if (!add.length) throw new Error(`prepend requires non-empty lines for ${edit.pos}`)
-      if (canTrimFirst(lines[ref.line - 2] ?? "", add)) add = add.slice(1)
-      if (canTrimLast(lines[ref.line - 1] ?? "", add)) add = add.slice(0, -1)
-      if (!add.length) throw new Error(`prepend requires non-empty lines for ${edit.pos}`)
-      lines.splice(ref.line - 1, 0, ...add)
+      if (!add.length) throw new Error("prepend requires non-empty lines")
+      if (canTrimFirst(lines[line - 2] ?? "", add)) add = add.slice(1)
+      if (canTrimLast(lines[line - 1] ?? "", add)) add = add.slice(0, -1)
+      if (!add.length) throw new Error("prepend requires non-empty lines")
+      lines.splice(line - 1, 0, ...add)
       continue
     }
-    const start = parse(edit.pos).line
-    const end = parse(edit.end ?? edit.pos).line
+    const start = edit.start
+    const end = edit.end
     if (start > end) {
       throw new Error(`Invalid range: start line ${start} cannot be greater than end line ${end}`)
     }
