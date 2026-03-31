@@ -40,9 +40,10 @@ export namespace UI {
     blank = true
   }
 
-  export function logo(pad?: string) {
+  export function logo(pad?: string, opts?: { solid?: boolean }) {
     const result: string[] = []
     const reset = "\x1b[0m"
+    const solid = opts?.solid ?? false
     const left = {
       fg: "\x1b[90m",
       shadow: "\x1b[38;5;235m",
@@ -58,15 +59,15 @@ export namespace UI {
       const parts: string[] = []
       for (const char of line) {
         if (char === "_") {
-          parts.push(bg, " ", reset)
+          parts.push(solid ? shadow + "█" + reset : bg + " " + reset)
           continue
         }
         if (char === "^") {
-          parts.push(fg, bg, "▀", reset)
+          parts.push(solid ? fg + "█" + reset : fg + bg + "▀" + reset)
           continue
         }
         if (char === "~") {
-          parts.push(shadow, "▀", reset)
+          parts.push(solid ? shadow + "█" + reset : shadow + "▀" + reset)
           continue
         }
         if (char === " ") {
