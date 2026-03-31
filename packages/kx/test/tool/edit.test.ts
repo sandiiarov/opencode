@@ -477,6 +477,69 @@ describe("tool.edit", () => {
     })
   })
 
+  test("trims structural duplicate lines from replace edits", async () => {
+    await using tmp = await tmpdir()
+    const file = path.join(tmp.path, "package.json")
+    await fs.writeFile(
+      file,
+      [
+        "{",
+        '  "scripts": {',
+        '    "build": "bun run script/build.ts"',
+        "  },",
+        '  "bin": {',
+        '    "kx": "./bin/kx"',
+        "  },",
+        "}",
+        "",
+      ].join("\n"),
+      "utf-8",
+    )
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        await FileTime.read(ctx.sessionID, file)
+        const edit = await EditTool.init()
+
+        await edit.execute(
+          {
+            filePath: file,
+            edits: [
+              {
+                op: "replace",
+                pos: ref(2, '  "scripts": {'),
+                end: ref(3, '    "build": "bun run script/build.ts"'),
+                lines: [
+                  '  "scripts": {',
+                  '    "build": "bun run script/build.ts",',
+                  '    "schema": "bun run script/schema.ts"',
+                  "  }",
+                ],
+              },
+            ],
+          },
+          ctx,
+        )
+
+        expect(await fs.readFile(file, "utf-8")).toBe(
+          [
+            "{",
+            '  "scripts": {',
+            '    "build": "bun run script/build.ts",',
+            '    "schema": "bun run script/schema.ts"',
+            "  },",
+            '  "bin": {',
+            '    "kx": "./bin/kx"',
+            "  },",
+            "}",
+            "",
+          ].join("\n"),
+        )
+      },
+    })
+  })
+
   test("renders hashline output back to numbered lines for users", () => {
     const text = `<content>\n1#${computeLineHash(1, "alpha")}|alpha\n>>> 2#${computeLineHash(2, "beta")}|beta\nERROR [2#${computeLineHash(2, "beta")}:3] bad\n</content>`
     expect(renderNumberedOutput(text)).toContain("1: alpha")

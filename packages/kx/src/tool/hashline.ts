@@ -147,8 +147,14 @@ function clean(lines: string | string[] | null) {
   })
 }
 
+function normalize(line: string) {
+  const text = line.replace(/\s+/g, "")
+  if (/^[\]\}\)](?:[,;])?$/.test(text)) return text.replace(/[;,]$/, "")
+  return text
+}
+
 function same(a: string, b: string) {
-  return a === b || a.replace(/\s+/g, "") === b.replace(/\s+/g, "")
+  return a === b || normalize(a) === normalize(b)
 }
 
 function indent(base: string, line: string) {
@@ -230,6 +236,7 @@ export function apply(content: string, edits: Edit[]) {
       let add = clean(edit.lines)
       if (!add.length) throw new Error(`append requires non-empty lines for ${edit.pos}`)
       if (canTrimFirst(lines[ref.line - 1] ?? "", add)) add = add.slice(1)
+      if (canTrimLast(lines[ref.line] ?? "", add)) add = add.slice(0, -1)
       if (!add.length) throw new Error(`append requires non-empty lines for ${edit.pos}`)
       lines.splice(ref.line, 0, ...add)
       continue
@@ -238,6 +245,7 @@ export function apply(content: string, edits: Edit[]) {
       const ref = parse(edit.pos!)
       let add = clean(edit.lines)
       if (!add.length) throw new Error(`prepend requires non-empty lines for ${edit.pos}`)
+      if (canTrimFirst(lines[ref.line - 2] ?? "", add)) add = add.slice(1)
       if (canTrimLast(lines[ref.line - 1] ?? "", add)) add = add.slice(0, -1)
       if (!add.length) throw new Error(`prepend requires non-empty lines for ${edit.pos}`)
       lines.splice(ref.line - 1, 0, ...add)
