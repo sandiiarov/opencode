@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "name": "@opencode-ai/plugin",
+  "name": "@kx/plugin",
   "version": "1.3.2",
   "type": "module",
   "license": "MIT",
@@ -13,7 +13,7 @@
     "./tool": "./src/tool.ts"
   },
   "dependencies": {
-    "@opencode-ai/sdk": "workspace:*",
+    "@kx/sdk": "workspace:*",
     "zod": "catalog:"
   },
   "peerDependencies": {

@@ -1039,7 +1039,7 @@ class Event extends _HeyApiClient {
   }
 }
 
-export class OpencodeClient extends _HeyApiClient {
+export class KxClient extends _HeyApiClient {
   /**
    * Respond to a permission request
    */

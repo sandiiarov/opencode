@@ -1,4 +1,4 @@
-- Core packages live in `packages/opencode`, `packages/plugin`, `packages/sdk/js`, and `packages/util`.
+- Core packages live in `packages/kx`, `packages/plugin`, `packages/sdk/js`, and `packages/util`.
 - To regenerate the JavaScript SDK, run `./packages/sdk/js/script/build.ts`.
 - ALWAYS USE PARALLEL TOOLS WHEN APPLICABLE.
 - The default branch in this repo is `dev`.
@@ -37,7 +37,7 @@
 
 - Avoid mocks as much as possible
 - Test actual implementation, do not duplicate logic into tests
-- Tests cannot run from repo root; run them from package dirs like `packages/opencode`
+- Tests cannot run from repo root; run them from package dirs like `packages/kx`
 
 ### Type Checking
 
