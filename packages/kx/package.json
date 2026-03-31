@@ -10,6 +10,7 @@
     "typecheck": "tsgo --noEmit",
     "test": "bun test --timeout 30000",
     "build": "bun run script/build.ts",
+    "schema": "mkdir -p schema && bun run script/schema.ts schema/config.json schema/tui.json",
     "upgrade-opentui": "bun run script/upgrade-opentui.ts",
     "dev": "bun run --conditions=browser ./src/index.ts",
     "clean": "rm -rf node_modules dist",
