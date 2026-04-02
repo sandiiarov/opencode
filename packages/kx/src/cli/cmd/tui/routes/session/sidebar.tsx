@@ -163,7 +163,8 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
                         {item.status === "connected" ? STATUS_ON_MARK : STATUS_OFF_MARK}
                       </span>
                       {"  "}
-                      {SEP_MARK} <span style={{ fg: lspcolor(item.id) }}>{lspicon(item.id)}</span> {item.id} {SEP_MARK}{" "}
+                      <span style={{ fg: lspcolor(item.id) }}>{lspicon(item.id)}</span>
+                      {"  "}
                       {FOLDER_MARK} {item.root}
                     </text>
                   </box>
