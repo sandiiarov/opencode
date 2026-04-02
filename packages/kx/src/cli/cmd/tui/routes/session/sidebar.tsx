@@ -165,7 +165,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
                       {"  "}
                       <span style={{ fg: lspcolor(item.id) }}>{lspicon(item.id)}</span>
                       {"  "}
-                      {FOLDER_MARK} {item.root}
+                      {FOLDER_MARK} {item.root || "root"}
                     </text>
                   </box>
                 )}
