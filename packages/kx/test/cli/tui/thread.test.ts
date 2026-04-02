@@ -111,6 +111,7 @@ describe("tui thread", () => {
     const cwd = process.cwd()
     const pwd = process.env.PWD
     const worker = globalThis.Worker
+    const workerPath = (globalThis as { KX_WORKER_PATH?: string }).KX_WORKER_PATH
     const tty = Object.getOwnPropertyDescriptor(process.stdin, "isTTY")
     const link = path.join(path.dirname(tmp.path), path.basename(tmp.path) + "-link")
     const type = process.platform === "win32" ? "junction" : "dir"
@@ -129,6 +130,7 @@ describe("tui thread", () => {
       postMessage() {}
       terminate() {}
     } as unknown as typeof Worker
+    ;(globalThis as { KX_WORKER_PATH?: string }).KX_WORKER_PATH = "mock-worker.js"
 
     try {
       process.chdir(tmp.path)
@@ -143,6 +145,8 @@ describe("tui thread", () => {
       if (tty) Object.defineProperty(process.stdin, "isTTY", tty)
       else delete (process.stdin as { isTTY?: boolean }).isTTY
       globalThis.Worker = worker
+      if (workerPath === undefined) delete (globalThis as { KX_WORKER_PATH?: string }).KX_WORKER_PATH
+      else (globalThis as { KX_WORKER_PATH?: string }).KX_WORKER_PATH = workerPath
       await fs.rm(link, { recursive: true, force: true }).catch(() => undefined)
     }
   }
