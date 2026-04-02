@@ -1,7 +1,7 @@
 import { cmd } from "./cmd"
 import { Duration, Effect, Match, Option } from "effect"
 import { UI } from "../ui"
-import { AccountID, Account, OrgID, PollExpired, type PollResult } from "@/account"
+import { Account, PollExpired, type AccountID, type OrgID, type PollResult } from "@/account"
 import { type AccountError } from "@/account/schema"
 import * as Prompt from "../effect/prompt"
 import open from "open"

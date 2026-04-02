@@ -1,4 +1,4 @@
-import { Database } from "bun:sqlite"
+import type { Database } from "bun:sqlite"
 import { drizzle } from "drizzle-orm/bun-sqlite"
 import { Global } from "../global"
 import { Log } from "../util/log"

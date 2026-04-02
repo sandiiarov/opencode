@@ -4,22 +4,19 @@ import { FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse } fr
 import { makeRunPromise } from "@/effect/run-service"
 import { withTransientReadRetry } from "@/util/effect-http-client"
 import { AccountRepo, type AccountRow } from "./repo"
+import type { AccountError, Info, OrgID, PollResult } from "./schema"
 import {
-  type AccountError,
   AccessToken,
   AccountID,
   DeviceCode,
-  Info,
   RefreshToken,
   AccountServiceError,
   Login,
   Org,
-  OrgID,
   PollDenied,
   PollError,
   PollExpired,
   PollPending,
-  type PollResult,
   PollSlow,
   PollSuccess,
   UserCode,

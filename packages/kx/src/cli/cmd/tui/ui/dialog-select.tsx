@@ -1,4 +1,5 @@
-import { InputRenderable, RGBA, ScrollBoxRenderable, TextAttributes } from "@opentui/core"
+import type { InputRenderable, ScrollBoxRenderable} from "@opentui/core";
+import { RGBA, TextAttributes } from "@opentui/core"
 import { useKeyboard, useTerminalDimensions } from "@opentui/solid"
 import { useKeybind } from "@tui/context/keybind"
 import { useTheme, selectedForeground } from "@tui/context/theme"

@@ -1,5 +1,6 @@
-import { Effect, Layer, ManagedRuntime } from "effect"
-import * as ServiceMap from "effect/ServiceMap"
+import type { Effect} from "effect";
+import { Layer, ManagedRuntime } from "effect"
+import type * as ServiceMap from "effect/ServiceMap"
 
 export const memoMap = Layer.makeMemoMapUnsafe()
 
