@@ -25,7 +25,7 @@ export namespace TuiConfig {
   }
 
   const state = Instance.state(async () => {
-    let projectFiles = Flag.KX_DISABLE_PROJECT_CONFIG
+    const projectFiles = Flag.KX_DISABLE_PROJECT_CONFIG
       ? []
       : await ConfigPaths.projectFiles("tui", Instance.directory, Instance.worktree)
     const directories = await ConfigPaths.directories(Instance.directory, Instance.worktree)

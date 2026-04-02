@@ -23,7 +23,6 @@ export namespace Terminal {
       let background: RGBA | null = null
       let foreground: RGBA | null = null
       const paletteColors: RGBA[] = []
-      let timeout: NodeJS.Timeout
 
       const cleanup = () => {
         process.stdin.setRawMode(false)
@@ -116,7 +115,7 @@ export namespace Terminal {
         process.stdout.write(`\x1b]4;${i};?\x07`)
       }
 
-      timeout = setTimeout(() => {
+      const timeout = setTimeout(() => {
         cleanup()
         resolve({ background, foreground, colors: paletteColors })
       }, 1000)

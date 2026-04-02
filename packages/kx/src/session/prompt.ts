@@ -297,7 +297,7 @@ export namespace SessionPrompt {
       let lastUser: Message.User | undefined
       let lastAssistant: Message.Assistant | undefined
       let lastFinished: Message.Assistant | undefined
-      let tasks: (Message.CompactionPart | Message.SubtaskPart)[] = []
+      const tasks: (Message.CompactionPart | Message.SubtaskPart)[] = []
       for (let i = msgs.length - 1; i >= 0; i--) {
         const msg = msgs[i]
         if (!lastUser && msg.info.role === "user") lastUser = msg.info as Message.User

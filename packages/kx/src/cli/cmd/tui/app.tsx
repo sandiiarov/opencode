@@ -46,8 +46,6 @@ async function getTerminalBackgroundColor(): Promise<"dark" | "light"> {
   if (!process.stdin.isTTY) return "dark"
 
   return new Promise((resolve) => {
-    let timeout: NodeJS.Timeout
-
     const cleanup = () => {
       process.stdin.setRawMode(false)
       process.stdin.removeListener("data", handler)
@@ -103,7 +101,7 @@ async function getTerminalBackgroundColor(): Promise<"dark" | "light"> {
     process.stdin.on("data", handler)
     process.stdout.write("\x1b]11;?\x07")
 
-    timeout = setTimeout(() => {
+    const timeout = setTimeout(() => {
       cleanup()
       resolve("dark")
     }, 1000)

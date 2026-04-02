@@ -13,7 +13,6 @@ export default [
       "@typescript-eslint/no-require-imports": "off",
       "@typescript-eslint/no-unused-expressions": "off",
       "@typescript-eslint/no-unused-vars": "off",
-      "prefer-const": "off",
       "require-yield": "off",
     },
   },
