@@ -9,7 +9,6 @@ export default [
       "@typescript-eslint/consistent-type-imports": "off",
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-namespace": "off",
-      "no-useless-escape": "off",
     },
   },
 ]

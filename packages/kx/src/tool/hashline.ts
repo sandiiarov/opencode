@@ -268,7 +268,7 @@ function clean(lines: string | string[] | null) {
 
 function normalize(line: string) {
   const text = line.replace(/\s+/g, "")
-  if (/^[\]\}\)](?:[,;])?$/.test(text)) return text.replace(/[;,]$/, "")
+  if (/^[\]})](?:[,;])?$/.test(text)) return text.replace(/[;,]$/, "")
   return text
 }
 

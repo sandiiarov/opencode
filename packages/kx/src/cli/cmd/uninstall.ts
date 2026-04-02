@@ -171,11 +171,11 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
   if (method === "local" && targets.binary) {
     UI.empty()
     prompts.log.message("To finish removing the binary, run:")
-    prompts.log.info(`  rm \"${targets.binary}\"`)
+    prompts.log.info(`  rm "${targets.binary}"`)
 
     const binDir = path.dirname(targets.binary)
     if (binDir.includes(".kx")) {
-      prompts.log.info(`  rmdir \"${binDir}\" 2>/dev/null`)
+      prompts.log.info(`  rmdir "${binDir}" 2>/dev/null`)
     }
   }
 

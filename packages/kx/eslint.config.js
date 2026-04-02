@@ -20,7 +20,6 @@ export default [
       "import/no-duplicates": "off",
       "no-async-promise-executor": "off",
       "no-control-regex": "off",
-      "no-useless-escape": "off",
       "prefer-const": "off",
       "preserve-caught-error": "off",
       "require-yield": "off",
