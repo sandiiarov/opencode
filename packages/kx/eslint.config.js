@@ -18,7 +18,6 @@ export default [
       "import/newline-after-import": "off",
       "import/no-duplicates": "off",
       "prefer-const": "off",
-      "preserve-caught-error": "off",
       "require-yield": "off",
       "no-case-declarations": "off",
       "no-constant-condition": "off",

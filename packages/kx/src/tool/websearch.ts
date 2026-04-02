@@ -140,7 +140,7 @@ export const WebSearchTool = Tool.define("websearch", async () => {
         clearTimeout()
 
         if (error instanceof Error && error.name === "AbortError") {
-          throw new Error("Search request timed out")
+          throw new Error("Search request timed out", { cause: error })
         }
 
         throw error
