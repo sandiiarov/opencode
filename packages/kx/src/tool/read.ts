@@ -191,7 +191,7 @@ export const ReadTool = Tool.define("read", {
 
     const all = await Filesystem.readText(filepath)
     const rows = FileLine.sync(filepath, all)
-    const content = raw.map((line, index) => formatLine(rows[start + index]!, line.display))
+    const content = raw.map((line, index) => formatLine(rows[start + index]!, line.display, start + index + 1))
     const preview = raw
       .slice(0, 20)
       .map((line) => line.display)

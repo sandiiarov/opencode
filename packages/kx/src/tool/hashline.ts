@@ -1,9 +1,9 @@
 import { FileLine } from "../file/line"
 
 const WORD = /[\p{L}\p{N}]/u
-const OUT = /^(\s*(?:>>>\s*)?)([a-z0-9]{4})\|(.*)$/i
+const OUT = /^(\s*(?:>>>\s*)?)([a-z0-9]{4})\|(\d+) (.*)$/i
 const OLD_OUT = /^(\s*(?:>>>\s*)?)(\d+)#[a-z0-9]{2}(?:@[A-Za-z0-9_-]+)?\|(.*)$/i
-const DIAGNOSTIC_REF = /\[([a-z0-9]{4})(?::(\d+))?\]/gi
+const DIAGNOSTIC_REF = /\[([a-z0-9]{4})\|(\d+)\|(\d+)\]/gi
 const OLD_DIAGNOSTIC_REF = /\[(\d+)#[a-z0-9]{2}(?::(\d+))?\]/gi
 const ID = /^[a-z0-9]{4}$/i
 
@@ -34,8 +34,8 @@ export function computeLineHash(line: number, content: string) {
   return (Bun.hash.xxHash32(text, seed) % 256).toString(36).padStart(2, "0").slice(0, 2)
 }
 
-export function formatLine(item: Row, display = item.text) {
-  return FileLine.format(item, display)
+export function formatLine(item: Row, display = item.text, line?: number) {
+  return FileLine.format(item, display, line)
 }
 
 export function renderNumberedOutput(text: string) {
@@ -46,16 +46,17 @@ export function renderNumberedOutput(text: string) {
     .map((item) => {
       const match = item.match(OUT)
       if (match) {
-        line += 1
+        const lineNum = Number.parseInt(match[3], 10)
+        line = Number.isNaN(lineNum) ? line + 1 : lineNum
         refs.set(match[2], line)
-        return `${match[1]}${line}: ${match[3]}`
+        return `${match[1]}${line}: ${match[4]}`
       }
       const legacy = item.match(OLD_OUT)
       if (legacy) return `${legacy[1]}${legacy[2]}: ${legacy[3]}`
       return item
-        .replace(DIAGNOSTIC_REF, (_, id: string, col?: string) => {
-          const value = refs.get(id)
-          return `[${value ?? id}${col ? `:${col}` : ""}]`
+        .replace(DIAGNOSTIC_REF, (_, id: string, row: string, col: string) => {
+          const value = refs.get(id) ?? row
+          return `[${value}:${col}]`
         })
         .replace(OLD_DIAGNOSTIC_REF, (_, row: string, col?: string) => `[${row}${col ? `:${col}` : ""}]`)
     })
@@ -79,8 +80,8 @@ export function changedPreview(file: string, before: string, after: string) {
   const to = Math.min(next.length - 1, Math.max(start, nextEnd + 1))
   const out = [] as string[]
   if (from > 0) out.push("...")
-  for (let i = from; i <= to; i++) out.push(`${i >= start && i <= nextEnd ? ">>> " : ""}${formatLine(next[i])}`)
-  if (to < next.length - 1) out.push("...")
+  for (let i = from; i <= to; i++)
+    out.push(`${i >= start && i <= nextEnd ? ">>> " : ""}${formatLine(next[i], next[i].text, i + 1)}`)
   return out.join("\n")
 }
 
@@ -92,13 +93,13 @@ function clean(lines: string | string[] | null) {
   for (const line of list) {
     if (!line) continue
     seen++
-    if (/^\s*(?:>>>\s*)?[a-z0-9]{4}\|/i.test(line)) ids++
+    if (/^\s*(?:>>>\s*)?[a-z0-9]{4}\|\d+ /i.test(line)) ids++
     if (/^\+(?!\+)/.test(line)) diff++
   }
   const stripID = seen > 0 && ids >= seen / 2
   const stripDiff = !stripID && seen > 0 && diff >= seen / 2
   return list.map((line) => {
-    if (stripID) return line.replace(/^\s*(?:>>>\s*)?[a-z0-9]{4}\|/i, "")
+    if (stripID) return line.replace(/^\s*(?:>>>\s*)?[a-z0-9]{4}\|\d+ /i, "")
     if (stripDiff) return line.replace(/^\+(?!\+)/, "")
     return line
   })

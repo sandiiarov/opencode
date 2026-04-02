@@ -628,7 +628,7 @@ describe("tool.edit", () => {
   })
 
   test("renders hashline output back to numbered lines for users", () => {
-    const text = `<content>\na1b2|alpha\n>>> c3d4|beta\nERROR [c3d4:3] bad\n</content>`
+    const text = `<content>\na1b2|1 alpha\n>>> c3d4|2 beta\nERROR [c3d4|2|3] bad\n</content>`
     expect(renderNumberedOutput(text)).toContain("1: alpha")
     expect(renderNumberedOutput(text)).toContain(">>> 2: beta")
     expect(renderNumberedOutput(text)).toContain("ERROR [2:3] bad")

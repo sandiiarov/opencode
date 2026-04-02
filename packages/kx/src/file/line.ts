@@ -71,8 +71,9 @@ export namespace FileLine {
     files.clear()
   }
 
-  export function format(item: Row, display = item.text) {
-    return `${item.id}|${display}`
+  export function format(item: Row, display = item.text, line?: number) {
+    const prefix = line === undefined ? item.id : `${item.id}|${line}`
+    return `${prefix} ${display}`
   }
 
   export function resolve(file: string, id: string) {

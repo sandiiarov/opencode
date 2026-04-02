@@ -506,8 +506,8 @@ export namespace LSP {
     function ref(diagnostic: LSPClient.Diagnostic, id?: string) {
       const line = diagnostic.range.start.line + 1
       const col = diagnostic.range.start.character + 1
-      if (!id) return `[${line}:${col}]`
-      return `[${id}:${col}]`
+      if (!id) return `[${line}|${col}]`
+      return `[${id}|${line}|${col}]`
     }
 
     export function pretty(diagnostic: LSPClient.Diagnostic, id?: string) {

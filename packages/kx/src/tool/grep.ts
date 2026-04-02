@@ -150,7 +150,7 @@ export const GrepTool = Tool.define("grep", {
       const fileLinesList = await fileLines(match.path, cache)
       const truncatedLineText =
         match.lineText.length > MAX_LINE_LENGTH ? match.lineText.substring(0, MAX_LINE_LENGTH) + "..." : match.lineText
-      outputLines.push(`  ${formatLine(fileLinesList[match.lineNum - 1]!, truncatedLineText)}`)
+      outputLines.push(`  ${formatLine(fileLinesList[match.lineNum - 1]!, truncatedLineText, match.lineNum)}`)
     }
 
     if (truncated) {

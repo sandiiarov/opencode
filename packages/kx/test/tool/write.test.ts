@@ -196,7 +196,7 @@ describe("tool.write", () => {
               ctx,
             )
 
-            expect(result.output).toMatch(/ERROR \[[a-z0-9]{4}:3\] problem/i)
+            expect(result.output).toMatch(/ERROR \[[a-z0-9]{4}\|2\|3\] problem/i)
             expect(renderNumberedOutput(result.output)).toContain("ERROR [2:3] problem")
           },
         })

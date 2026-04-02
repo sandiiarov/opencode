@@ -273,8 +273,8 @@ describe("tool.read truncation", () => {
       fn: async () => {
         const read = await ReadTool.init()
         const result = await read.execute({ filePath: path.join(tmp.path, "small.txt") }, ctx)
-        expect(result.output).toMatch(/[a-z0-9]{4}\|alpha/i)
-        expect(result.output).toMatch(/[a-z0-9]{4}\|beta/i)
+        expect(result.output).toMatch(/[a-z0-9]{4}\|1 alpha/i)
+        expect(result.output).toMatch(/[a-z0-9]{4}\|2 beta/i)
       },
     })
   })
@@ -291,10 +291,10 @@ describe("tool.read truncation", () => {
       fn: async () => {
         const read = await ReadTool.init()
         const result = await read.execute({ filePath: path.join(tmp.path, "offset.txt"), offset: 10, limit: 5 }, ctx)
-        expect(result.output).toMatch(/[a-z0-9]{4}\|line10/i)
-        expect(result.output).toMatch(/[a-z0-9]{4}\|line14/i)
-        expect(result.output).not.toContain("|line9")
-        expect(result.output).not.toContain("|line15")
+        expect(result.output).toMatch(/[a-z0-9]{4}\|10 line10/i)
+        expect(result.output).toMatch(/[a-z0-9]{4}\|14 line14/i)
+        expect(result.output).not.toContain("|9 line9")
+        expect(result.output).not.toContain("|15 line15")
         expect(result.output).toContain("line10")
         expect(result.output).toContain("line14")
         expect(result.output).not.toContain("line0")
@@ -386,7 +386,7 @@ describe("tool.read truncation", () => {
       fn: async () => {
         const read = await ReadTool.init()
         const result = await read.execute({ filePath: path.join(tmp.path, "long-line.txt") }, ctx)
-        expect(result.output).toMatch(/[a-z0-9]{4}\|x+/i)
+        expect(result.output).toMatch(/[a-z0-9]{4}\|1 x+/i)
         expect(result.output).toContain(`${longLine.slice(0, 2000)}... (line truncated to 2000 chars)`)
         expect(result.output.length).toBeLessThan(3000)
       },

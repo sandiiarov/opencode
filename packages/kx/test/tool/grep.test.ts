@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import path from "path"
 import { EditTool } from "../../src/tool/edit"
 import { GrepTool } from "../../src/tool/grep"
-import { computeLineHash, renderNumberedOutput } from "../../src/tool/hashline"
+import { renderNumberedOutput } from "../../src/tool/hashline"
 import { Instance } from "../../src/project/instance"
 import { tmpdir } from "../fixture/fixture"
 import { SessionID, MessageID } from "../../src/session/schema"
@@ -107,8 +107,8 @@ describe("tool.grep", () => {
       fn: async () => {
         const grep = await GrepTool.init()
         const result = await grep.execute({ pattern: "beta", path: tmp.path }, ctx)
-        expect(result.output).toMatch(/  [a-z0-9]{4}\|beta/i)
-        expect(renderNumberedOutput(result.output)).toContain("  1: beta")
+        expect(result.output).toMatch(/^\s{2}[a-z0-9]{4}\|2 beta/im)
+        expect(renderNumberedOutput(result.output)).toContain("  2: beta")
       },
     })
   })
