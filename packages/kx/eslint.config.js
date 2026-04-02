@@ -17,7 +17,6 @@ export default [
       "prefer-const": "off",
       "require-yield": "off",
       "no-case-declarations": "off",
-      "no-constant-condition": "off",
       "no-fallthrough": "off",
       "no-useless-assignment": "off",
     },
