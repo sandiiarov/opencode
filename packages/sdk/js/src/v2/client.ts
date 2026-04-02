@@ -3,6 +3,7 @@ export * from "./gen/types.gen.js"
 import { createClient } from "./gen/client/client.gen.js"
 import { type Config } from "./gen/client/types.gen.js"
 import { KxClient } from "./gen/sdk.gen.js"
+
 export { type Config as KxClientConfig, KxClient }
 
 export function createKxClient(config?: Config & { directory?: string; experimental_workspaceID?: string }) {

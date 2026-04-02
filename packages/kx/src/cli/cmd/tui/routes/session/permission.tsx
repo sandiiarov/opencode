@@ -28,6 +28,7 @@ import {
   WRITE_MARK,
 } from "./icons"
 import { EDIT_MARK, EXTERNAL_DIR_MARK } from "../../icons"
+
 type PermissionStage = "permission" | "always" | "reject"
 
 function normalizePath(input?: string) {

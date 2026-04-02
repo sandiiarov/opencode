@@ -10,7 +10,6 @@ export default [
       "@typescript-eslint/ban-ts-comment": "off",
       "@typescript-eslint/no-explicit-any": "off",
       "import/first": "off",
-      "import/newline-after-import": "off",
     },
   },
 ]
