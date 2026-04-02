@@ -17,7 +17,6 @@ export default [
       "import/first": "off",
       "import/newline-after-import": "off",
       "import/no-duplicates": "off",
-      "no-async-promise-executor": "off",
       "prefer-const": "off",
       "preserve-caught-error": "off",
       "require-yield": "off",
