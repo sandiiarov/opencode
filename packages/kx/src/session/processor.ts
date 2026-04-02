@@ -50,7 +50,7 @@ export namespace SessionProcessor {
         while (true) {
           try {
             let currentText: Message.TextPart | undefined
-            let reasoningMap: Record<string, Message.ReasoningPart> = {}
+            const reasoningMap: Record<string, Message.ReasoningPart> = {}
             const stream = await LLM.stream(streamInput)
 
             for await (const value of stream.fullStream) {

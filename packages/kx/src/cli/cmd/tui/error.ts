@@ -1,4 +1,4 @@
-const HASHLINE_ERROR = "Use updated anchors below"
+const HASHLINE_ERROR = "Use updated line ids below"
 const HASHLINE_SUMMARY = /^\d+ line(?:s)? ha(?:s|ve) changed since last read/
 
 export function summarizeToolError(error?: string) {

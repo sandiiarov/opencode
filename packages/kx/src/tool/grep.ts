@@ -9,8 +9,8 @@ import DESCRIPTION from "./grep.txt"
 import { Instance } from "../project/instance"
 import path from "path"
 import { assertExternalDirectory } from "./external-directory"
-import { formatFileLine } from "./hashline"
-import { FileTime } from "../file/time"
+import { formatLine } from "./hashline"
+import { FileLine } from "../file/line"
 
 const MAX_LINE_LENGTH = 2000
 
@@ -21,11 +21,11 @@ type Match = {
   lineText: string
 }
 
-async function fileLines(file: string, cache: Map<string, string[]>) {
+async function fileLines(file: string, cache: Map<string, ReturnType<typeof FileLine.sync>>) {
   const hit = cache.get(file)
   if (hit) return hit
   const text = await Filesystem.readText(file)
-  const list = text.split(/\r?\n/)
+  const list = FileLine.sync(file, text)
   cache.set(file, list)
   return list
 }
@@ -84,7 +84,7 @@ export const GrepTool = Tool.define("grep", {
     if (exitCode === 1 || (exitCode === 2 && !output.trim())) {
       return {
         title: params.pattern,
-        metadata: { matches: 0, truncated: false, versions: {} },
+        metadata: { matches: 0, truncated: false },
         output: "No files found",
       }
     }
@@ -128,7 +128,7 @@ export const GrepTool = Tool.define("grep", {
     if (finalMatches.length === 0) {
       return {
         title: params.pattern,
-        metadata: { matches: 0, truncated: false, versions: {} },
+        metadata: { matches: 0, truncated: false },
         output: "No files found",
       }
     }
@@ -136,12 +136,7 @@ export const GrepTool = Tool.define("grep", {
     const totalMatches = matches.length
     const outputLines = [`Found ${totalMatches} matches${truncated ? ` (showing first ${limit})` : ""}`]
 
-    const files = [...new Set(finalMatches.map((match) => match.path))]
-    const versionEntries = await Promise.all(
-      files.map(async (file) => [file, await FileTime.read(ctx.sessionID, file)] as const),
-    )
-    const versions = Object.fromEntries(versionEntries)
-    const cache = new Map<string, string[]>()
+    const cache = new Map<string, ReturnType<typeof FileLine.sync>>()
 
     let currentFile = ""
     for (const match of finalMatches) {
@@ -155,7 +150,7 @@ export const GrepTool = Tool.define("grep", {
       const fileLinesList = await fileLines(match.path, cache)
       const truncatedLineText =
         match.lineText.length > MAX_LINE_LENGTH ? match.lineText.substring(0, MAX_LINE_LENGTH) + "..." : match.lineText
-      outputLines.push(`  ${formatFileLine(fileLinesList, match.lineNum - 1, truncatedLineText, match.lineNum)}`)
+      outputLines.push(`  ${formatLine(fileLinesList[match.lineNum - 1]!, truncatedLineText)}`)
     }
 
     if (truncated) {
@@ -175,7 +170,6 @@ export const GrepTool = Tool.define("grep", {
       metadata: {
         matches: totalMatches,
         truncated,
-        versions,
       },
       output: outputLines.join("\n"),
     }

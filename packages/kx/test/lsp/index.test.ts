@@ -1,7 +1,6 @@
 import { describe, expect, spyOn, test } from "bun:test"
 import path from "path"
 import { LSP } from "../../src/lsp/index"
-import { computeLineHash } from "../../src/tool/hashline"
 import { LSPServer } from "../../src/lsp/server"
 import { Instance } from "../../src/project/instance"
 import { tmpdir } from "../fixture/fixture"
@@ -66,7 +65,7 @@ describe("lsp.diagnostic", () => {
       severity: 1 as const,
       source: "ts",
     }
-    expect(LSP.Diagnostic.pretty(diagnostic, "beta")).toBe(`ERROR [2#${computeLineHash(2, "beta")}:3] problem`)
+    expect(LSP.Diagnostic.pretty(diagnostic, "beta")).toBe("ERROR [beta:3] problem")
     expect(LSP.Diagnostic.pretty(diagnostic)).toBe("ERROR [2:3] problem")
   })
 })

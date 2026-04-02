@@ -24,7 +24,7 @@ function lineRef(output: string, line: number) {
   const hit = output
     .split("\n")
     .map((item) => item.trimStart())
-    .find((item) => item.startsWith(`${line}#`) || item.startsWith(`>>> ${line}#`))
+    .filter((item) => /^(?:>>>\s*)?[a-z0-9]{4}\|/i.test(item))[line - 1]
   if (!hit) throw new Error(`Missing hashline ref for line ${line}`)
   return hit.replace(/^>>>\s*/, "").split("|")[0]
 }
@@ -107,26 +107,8 @@ describe("tool.grep", () => {
       fn: async () => {
         const grep = await GrepTool.init()
         const result = await grep.execute({ pattern: "beta", path: tmp.path }, ctx)
-        expect(result.output).toContain(`  2#${computeLineHash(2, "beta")}@`)
-        expect(renderNumberedOutput(result.output)).toContain("  2: beta")
-      },
-    })
-  })
-
-  test("returns version metadata for matched files", async () => {
-    await using tmp = await tmpdir({
-      init: async (dir) => {
-        await Bun.write(path.join(dir, "test.txt"), "alpha\nbeta\n")
-      },
-    })
-    await Instance.provide({
-      directory: tmp.path,
-      fn: async () => {
-        const grep = await GrepTool.init()
-        const result = await grep.execute({ pattern: "beta", path: tmp.path }, ctx)
-        const file = path.join(tmp.path, "test.txt")
-        expect(typeof result.metadata.versions[file]).toBe("string")
-        expect(result.metadata.versions[file].length).toBeGreaterThan(0)
+        expect(result.output).toMatch(/  [a-z0-9]{4}\|beta/i)
+        expect(renderNumberedOutput(result.output)).toContain("  1: beta")
       },
     })
   })
@@ -144,13 +126,14 @@ describe("tool.grep", () => {
         const grep = await GrepTool.init()
         const grepResult = await grep.execute({ pattern: "ad", path: tmp.path }, ctx)
         const second = lineRef(grepResult.output, 2)
-        const tail = lineRef(grepResult.output, 4)
+        const tail = lineRef(grepResult.output, 3)
 
+        const { FileTime } = await import("../../src/file/time")
+        await FileTime.read(ctx.sessionID, file)
         const edit = await EditTool.init()
-        const first = await edit.execute(
+        await edit.execute(
           {
             filePath: file,
-            expectedVersion: grepResult.metadata.versions[file],
             edits: [
               {
                 op: "replace",
@@ -165,7 +148,6 @@ describe("tool.grep", () => {
         await edit.execute(
           {
             filePath: file,
-            expectedVersion: first.metadata.version,
             edits: [{ op: "replace", pos: tail, lines: ["tail"] }],
           },
           ctx,

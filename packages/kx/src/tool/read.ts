@@ -11,7 +11,8 @@ import { Instance } from "../project/instance"
 import { assertExternalDirectory } from "./external-directory"
 import { InstructionPrompt } from "../session/instruction"
 import { Filesystem } from "../util/filesystem"
-import { formatFileLine } from "./hashline"
+import { formatLine, splitContent } from "./hashline"
+import { FileLine } from "../file/line"
 
 const DEFAULT_READ_LIMIT = 2000
 const MAX_LINE_LENGTH = 2000
@@ -111,7 +112,6 @@ export const ReadTool = Tool.define("read", {
         metadata: {
           preview: sliced.slice(0, 20).join("\n"),
           truncated,
-          version: "",
           loaded: [] as string[],
         },
       }
@@ -119,7 +119,6 @@ export const ReadTool = Tool.define("read", {
 
     const instructions = await InstructionPrompt.resolve(ctx.messages, filepath, ctx.messageID)
 
-    // Exclude SVG (XML-based) and vnd.fastbidsheet (.fbs extension, commonly FlatBuffers schema files)
     const mime = Filesystem.mimeType(filepath)
     const isImage = mime.startsWith("image/") && mime !== "image/svg+xml" && mime !== "image/vnd.fastbidsheet"
     const isPdf = mime === "application/pdf"
@@ -131,7 +130,6 @@ export const ReadTool = Tool.define("read", {
         metadata: {
           preview: msg,
           truncated: false,
-          version: "",
           loaded: instructions.map((i) => i.filepath),
         },
         attachments: [
@@ -150,8 +148,6 @@ export const ReadTool = Tool.define("read", {
     const stream = createReadStream(filepath, { encoding: "utf8" })
     const rl = createInterface({
       input: stream,
-      // Note: we use the crlfDelay option to recognize all instances of CR LF
-      // ('\r\n') in file as a single line break.
       crlfDelay: Infinity,
     })
 
@@ -193,8 +189,9 @@ export const ReadTool = Tool.define("read", {
       throw new Error(`Offset ${offset} is out of range for this file (${lines} lines)`)
     }
 
-    const source = raw.map((line) => line.source)
-    const content = raw.map((line, index) => formatFileLine(source, index, line.display, index + offset))
+    const all = await Filesystem.readText(filepath)
+    const rows = FileLine.sync(filepath, all)
+    const content = raw.map((line, index) => formatLine(rows[start + index]!, line.display))
     const preview = raw
       .slice(0, 20)
       .map((line) => line.display)
@@ -203,7 +200,7 @@ export const ReadTool = Tool.define("read", {
     let output = [`<path>${filepath}</path>`, `<type>file</type>`, "<content>"].join("\n")
     output += content.join("\n")
 
-    const totalLines = lines
+    const totalLines = splitContent(all).length
     const lastReadLine = offset + raw.length - 1
     const nextOffset = lastReadLine + 1
     const truncated = hasMoreLines || truncatedByBytes
@@ -217,9 +214,8 @@ export const ReadTool = Tool.define("read", {
     }
     output += "\n</content>"
 
-    // just warms the lsp client
     LSP.touchFile(filepath, false)
-    const version = await FileTime.read(ctx.sessionID, filepath)
+    await FileTime.read(ctx.sessionID, filepath)
 
     if (instructions.length > 0) {
       output += `\n\n<system-reminder>\n${instructions.map((i) => i.content).join("\n\n")}\n</system-reminder>`
@@ -231,7 +227,6 @@ export const ReadTool = Tool.define("read", {
       metadata: {
         preview,
         truncated,
-        version,
         loaded: instructions.map((i) => i.filepath),
       },
     }
@@ -240,7 +235,6 @@ export const ReadTool = Tool.define("read", {
 
 async function isBinaryFile(filepath: string, fileSize: number): Promise<boolean> {
   const ext = path.extname(filepath).toLowerCase()
-  // binary check for common non-text extensions
   switch (ext) {
     case ".zip":
     case ".tar":
@@ -291,7 +285,6 @@ async function isBinaryFile(filepath: string, fileSize: number): Promise<boolean
         nonPrintableCount++
       }
     }
-    // If >30% non-printable characters, consider it binary
     return nonPrintableCount / result.bytesRead > 0.3
   } finally {
     await fh.close()

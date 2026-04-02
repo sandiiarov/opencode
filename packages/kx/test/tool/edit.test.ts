@@ -9,7 +9,8 @@ import { Instance } from "../../src/project/instance"
 import { tmpdir } from "../fixture/fixture"
 import { FileTime } from "../../src/file/time"
 import { SessionID, MessageID } from "../../src/session/schema"
-import { computeLineHash, renderNumberedOutput } from "../../src/tool/hashline"
+import { renderNumberedOutput } from "../../src/tool/hashline"
+import { FileLine } from "../../src/file/line"
 
 const ctx = {
   sessionID: SessionID.make("ses_test-edit-session"),
@@ -26,8 +27,9 @@ afterEach(async () => {
   await Instance.disposeAll()
 })
 
-function ref(line: number, text: string) {
-  return `${line}#${computeLineHash(line, text)}`
+async function ref(file: string, line: number) {
+  const text = await fs.readFile(file, "utf-8")
+  return FileLine.sync(file, text)[line - 1]!.id
 }
 
 function lineRef(output: string, line: number) {
@@ -35,13 +37,13 @@ function lineRef(output: string, line: number) {
   const hit = body
     .split("\n")
     .map((item) => item.trimStart())
-    .find((item) => item.startsWith(`${line}#`) || item.startsWith(`>>> ${line}#`))
-  if (!hit) throw new Error(`Missing hashline ref for line ${line}`)
+    .filter((item) => /^(?:>>>\s*)?[a-z0-9]{4}\|/i.test(item))[line - 1]
+  if (!hit) throw new Error(`Missing line id for line ${line}`)
   return hit.replace(/^>>>\s*/, "").split("|")[0]
 }
 
 describe("tool.edit", () => {
-  test("replaces a line using stable anchors", async () => {
+  test("replaces a line using line ids", async () => {
     await using tmp = await tmpdir()
     const file = path.join(tmp.path, "file.txt")
     await fs.writeFile(file, "one\ntwo\nthree\n", "utf-8")
@@ -54,7 +56,7 @@ describe("tool.edit", () => {
         const result = await edit.execute(
           {
             filePath: file,
-            edits: [{ op: "replace", pos: ref(2, "two"), lines: ["dos"] }],
+            edits: [{ op: "replace", pos: await ref(file, 2), lines: ["dos"] }],
           },
           ctx,
         )
@@ -99,35 +101,11 @@ describe("tool.edit", () => {
           edit.execute(
             {
               filePath: file,
-              edits: [{ op: "replace", pos: ref(2, "two"), lines: ["dos"] }],
+              edits: [{ op: "replace", pos: await ref(file, 2), lines: ["dos"] }],
             },
             ctx,
           ),
         ).rejects.toThrow("You must read file")
-      },
-    })
-  })
-
-  test("allows edit with expectedVersion instead of a prior read", async () => {
-    await using tmp = await tmpdir()
-    const file = path.join(tmp.path, "file.txt")
-    await fs.writeFile(file, "one\ntwo\n", "utf-8")
-
-    await Instance.provide({
-      directory: tmp.path,
-      fn: async () => {
-        const version = await FileTime.version(file)
-        const edit = await EditTool.init()
-        await edit.execute(
-          {
-            filePath: file,
-            expectedVersion: version,
-            edits: [{ op: "replace", pos: ref(2, "two"), lines: ["dos"] }],
-          },
-          ctx,
-        )
-
-        expect(await fs.readFile(file, "utf-8")).toBe("one\ndos\n")
       },
     })
   })
@@ -147,7 +125,7 @@ describe("tool.edit", () => {
           edit.execute(
             {
               filePath: file,
-              edits: [{ op: "replace", pos: ref(2, "two"), lines: ["dos"] }],
+              edits: [{ op: "replace", pos: await ref(file, 2), lines: ["dos"] }],
             },
             ctx,
           ),
@@ -171,7 +149,7 @@ describe("tool.edit", () => {
           {
             filePath: file,
             rename: next,
-            edits: [{ op: "replace", pos: ref(1, "name"), lines: ["done"] }],
+            edits: [{ op: "replace", pos: await ref(file, 1), lines: ["done"] }],
           },
           ctx,
         )
@@ -199,7 +177,7 @@ describe("tool.edit", () => {
     })
   })
 
-  test("uses refs returned by the read tool", async () => {
+  test("uses line ids returned by the read tool", async () => {
     await using tmp = await tmpdir()
     const file = path.join(tmp.path, "file.txt")
     await fs.writeFile(file, "one\ntwo\nthree\n", "utf-8")
@@ -224,18 +202,38 @@ describe("tool.edit", () => {
     })
   })
 
-  test("returns version metadata from read", async () => {
+  test("rejects non-id edit references", async () => {
     await using tmp = await tmpdir()
     const file = path.join(tmp.path, "file.txt")
-    await fs.writeFile(file, "one\ntwo\n", "utf-8")
+    await fs.writeFile(file, "one\ntwo\nthree\n", "utf-8")
 
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
         const read = await ReadTool.init()
-        const result = await read.execute({ filePath: file }, ctx)
-        expect(typeof result.metadata.version).toBe("string")
-        expect(result.metadata.version.length).toBeGreaterThan(0)
+        const snapshot = await read.execute({ filePath: file }, ctx)
+        const id = lineRef(snapshot.output, 2)
+        const edit = await EditTool.init()
+
+        await expect(
+          edit.execute(
+            {
+              filePath: file,
+              edits: [{ op: "replace", pos: `${id}|two`, lines: ["dos"] }],
+            },
+            ctx,
+          ),
+        ).rejects.toThrow('Expected a plain line id like "ryh9"')
+
+        await expect(
+          edit.execute(
+            {
+              filePath: file,
+              edits: [{ op: "replace", pos: "2#aa", lines: ["dos"] }],
+            },
+            ctx,
+          ),
+        ).rejects.toThrow('Expected a plain line id like "ryh9"')
       },
     })
   })
@@ -258,7 +256,7 @@ describe("tool.edit", () => {
         await edit.execute(
           {
             filePath: file,
-            edits: [{ op: "replace", pos: ref(2, "dos"), lines: ["tres"] }],
+            edits: [{ op: "replace", pos: await ref(file, 2), lines: ["tres"] }],
           },
           ctx,
         )
@@ -268,7 +266,7 @@ describe("tool.edit", () => {
     })
   })
 
-  test("uses refs returned by the grep tool", async () => {
+  test("uses line ids returned by the grep tool", async () => {
     await using tmp = await tmpdir()
     const file = path.join(tmp.path, "file.txt")
     await fs.writeFile(file, "one\ntwo\nthree\n", "utf-8")
@@ -278,12 +276,13 @@ describe("tool.edit", () => {
       fn: async () => {
         const grep = await GrepTool.init()
         const result = await grep.execute({ pattern: "two", path: tmp.path }, ctx)
+        await FileTime.read(ctx.sessionID, file)
         const edit = await EditTool.init()
 
         await edit.execute(
           {
             filePath: file,
-            edits: [{ op: "replace", pos: lineRef(result.output, 2), lines: ["dos"] }],
+            edits: [{ op: "replace", pos: lineRef(result.output, 1), lines: ["dos"] }],
           },
           ctx,
         )
@@ -293,33 +292,7 @@ describe("tool.edit", () => {
     })
   })
 
-  test("uses grep version metadata for edit without another read", async () => {
-    await using tmp = await tmpdir()
-    const file = path.join(tmp.path, "file.txt")
-    await fs.writeFile(file, "one\ntwo\nthree\n", "utf-8")
-
-    await Instance.provide({
-      directory: tmp.path,
-      fn: async () => {
-        const grep = await GrepTool.init()
-        const result = await grep.execute({ pattern: "two", path: tmp.path }, ctx)
-        const edit = await EditTool.init()
-
-        await edit.execute(
-          {
-            filePath: file,
-            expectedVersion: result.metadata.versions[file],
-            edits: [{ op: "replace", pos: lineRef(result.output, 2), lines: ["dos"] }],
-          },
-          ctx,
-        )
-
-        expect(await fs.readFile(file, "utf-8")).toBe("one\ndos\nthree\n")
-      },
-    })
-  })
-
-  test("returns fresh anchors for follow-up edits", async () => {
+  test("returns fresh line ids for follow-up edits", async () => {
     await using tmp = await tmpdir()
     const file = path.join(tmp.path, "file.txt")
     await fs.writeFile(file, "one\ntwo\nthree\n", "utf-8")
@@ -332,7 +305,7 @@ describe("tool.edit", () => {
         const first = await edit.execute(
           {
             filePath: file,
-            edits: [{ op: "replace", pos: ref(2, "two"), lines: ["dos"] }],
+            edits: [{ op: "replace", pos: await ref(file, 2), lines: ["dos"] }],
           },
           ctx,
         )
@@ -347,12 +320,40 @@ describe("tool.edit", () => {
 
         expect(await fs.readFile(file, "utf-8")).toBe("one\ntres\nthree\n")
         expect(first.output).toContain("Updated lines:")
-        expect(first.output).toContain("Reuse metadata.version as expectedVersion")
       },
     })
   })
 
-  test("accepts refs from truncated read output for long lines", async () => {
+  test("builds diff from final newline-preserving content", async () => {
+    await using tmp = await tmpdir()
+    const file = path.join(tmp.path, "file.json")
+    await fs.writeFile(file, ["{", '  "items": [', '    "one",', '    "two"', "  ]", "}", ""].join("\n"), "utf-8")
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        await FileTime.read(ctx.sessionID, file)
+        const edit = await EditTool.init()
+        const result = await edit.execute(
+          {
+            filePath: file,
+            edits: [{ op: "replace", pos: await ref(file, 4), lines: ['    "done"'] }],
+          },
+          ctx,
+        )
+
+        expect(await fs.readFile(file, "utf-8")).toBe(
+          ["{", '  "items": [', '    "one",', '    "done"', "  ]", "}", ""].join("\n"),
+        )
+        expect(result.metadata.diff).toContain('-    "two"')
+        expect(result.metadata.diff).toContain('+    "done"')
+        expect(result.metadata.diff).not.toContain("-}")
+        expect(result.metadata.diff).not.toContain("+}")
+      },
+    })
+  })
+
+  test("accepts line ids from truncated read output for long lines", async () => {
     await using tmp = await tmpdir()
     const file = path.join(tmp.path, "long.txt")
     await fs.writeFile(file, `${"x".repeat(3000)}\n`, "utf-8")
@@ -406,8 +407,8 @@ describe("tool.edit", () => {
             edits: [
               {
                 op: "replace",
-                pos: ref(2, "// remove one"),
-                end: ref(4, "// remove three"),
+                pos: await ref(file, 2),
+                end: await ref(file, 4),
                 lines: ["// Explicitly exit to avoid any hanging subprocesses."],
               },
             ],
@@ -456,8 +457,8 @@ describe("tool.edit", () => {
             edits: [
               {
                 op: "replace",
-                pos: ref(3, "// remove one"),
-                end: ref(5, "// remove three"),
+                pos: await ref(file, 3),
+                end: await ref(file, 5),
                 lines: ["// Explicitly exit to avoid any hanging subprocesses."],
               },
             ],
@@ -508,8 +509,8 @@ describe("tool.edit", () => {
             edits: [
               {
                 op: "replace",
-                pos: ref(2, '  "scripts": {'),
-                end: ref(3, '    "build": "bun run script/build.ts"'),
+                pos: await ref(file, 2),
+                end: await ref(file, 3),
                 lines: [
                   '  "scripts": {',
                   '    "build": "bun run script/build.ts",',
@@ -555,10 +556,9 @@ describe("tool.edit", () => {
         const tail = lineRef(snapshot.output, 4)
 
         const edit = await EditTool.init()
-        const first = await edit.execute(
+        await edit.execute(
           {
             filePath: file,
-            expectedVersion: snapshot.metadata.version,
             edits: [
               {
                 op: "replace",
@@ -574,7 +574,6 @@ describe("tool.edit", () => {
         await edit.execute(
           {
             filePath: file,
-            expectedVersion: first.metadata.version,
             edits: [{ op: "replace", pos: tail, lines: ["tail"] }],
           },
           ctx,
@@ -585,7 +584,7 @@ describe("tool.edit", () => {
     })
   })
 
-  test("relocates stable anchors for punctuation-only lines", async () => {
+  test("keeps punctuation-only line ids stable", async () => {
     await using tmp = await tmpdir()
     const file = path.join(tmp.path, "file.ts")
     await fs.writeFile(file, ["const x = () => {", "  run()", "}", "after()", ""].join("\n"), "utf-8")
@@ -599,10 +598,9 @@ describe("tool.edit", () => {
         const close = lineRef(snapshot.output, 3)
 
         const edit = await EditTool.init()
-        const first = await edit.execute(
+        await edit.execute(
           {
             filePath: file,
-            expectedVersion: snapshot.metadata.version,
             edits: [
               {
                 op: "replace",
@@ -617,7 +615,6 @@ describe("tool.edit", () => {
         await edit.execute(
           {
             filePath: file,
-            expectedVersion: first.metadata.version,
             edits: [{ op: "prepend", pos: close, lines: ["  cleanup()"] }],
           },
           ctx,
@@ -631,7 +628,7 @@ describe("tool.edit", () => {
   })
 
   test("renders hashline output back to numbered lines for users", () => {
-    const text = `<content>\n1#${computeLineHash(1, "alpha")}|alpha\n>>> 2#${computeLineHash(2, "beta")}|beta\nERROR [2#${computeLineHash(2, "beta")}:3] bad\n</content>`
+    const text = `<content>\na1b2|alpha\n>>> c3d4|beta\nERROR [c3d4:3] bad\n</content>`
     expect(renderNumberedOutput(text)).toContain("1: alpha")
     expect(renderNumberedOutput(text)).toContain(">>> 2: beta")
     expect(renderNumberedOutput(text)).toContain("ERROR [2:3] bad")

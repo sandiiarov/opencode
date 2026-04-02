@@ -7,7 +7,7 @@ import { LSP } from "../../src/lsp"
 import { Instance } from "../../src/project/instance"
 import { tmpdir } from "../fixture/fixture"
 import { SessionID, MessageID } from "../../src/session/schema"
-import { computeLineHash, renderNumberedOutput } from "../../src/tool/hashline"
+import { renderNumberedOutput } from "../../src/tool/hashline"
 
 const ctx = {
   sessionID: SessionID.make("ses_test-write-session"),
@@ -25,7 +25,7 @@ function lineRef(output: string, line: number) {
   const hit = body
     .split("\n")
     .map((item) => item.trimStart())
-    .find((item) => item.startsWith(`${line}#`) || item.startsWith(`>>> ${line}#`))
+    .filter((item) => /^(?:>>>\s*)?[a-z0-9]{4}\|/i.test(item))[line - 1]
   if (!hit) throw new Error(`Missing hashline ref for line ${line}`)
   return hit.replace(/^>>>\s*/, "").split("|")[0]
 }
@@ -136,31 +136,6 @@ describe("tool.write", () => {
       })
     })
 
-    test("allows overwrite with expectedVersion instead of a prior read", async () => {
-      await using tmp = await tmpdir()
-      const filepath = path.join(tmp.path, "existing.txt")
-      await fs.writeFile(filepath, "old content", "utf-8")
-
-      await Instance.provide({
-        directory: tmp.path,
-        fn: async () => {
-          const version = await import("../../src/file/time").then((x) => x.FileTime.version(filepath))
-          const write = await WriteTool.init()
-          const result = await write.execute(
-            {
-              filePath: filepath,
-              content: "new content",
-              expectedVersion: version,
-            },
-            ctx,
-          )
-
-          expect(result.metadata.version).not.toBe(version)
-          expect(await fs.readFile(filepath, "utf-8")).toBe("new content")
-        },
-      })
-    })
-
     test("returns diff in metadata for existing files", async () => {
       await using tmp = await tmpdir()
       const filepath = path.join(tmp.path, "file.txt")
@@ -221,7 +196,7 @@ describe("tool.write", () => {
               ctx,
             )
 
-            expect(result.output).toContain(`ERROR [2#${computeLineHash(2, "beta")}:3] problem`)
+            expect(result.output).toMatch(/ERROR \[[a-z0-9]{4}:3\] problem/i)
             expect(renderNumberedOutput(result.output)).toContain("ERROR [2:3] problem")
           },
         })
@@ -231,7 +206,7 @@ describe("tool.write", () => {
       }
     })
 
-    test("returns fresh anchors for follow-up edits", async () => {
+    test("returns fresh line ids for follow-up edits", async () => {
       await using tmp = await tmpdir()
       const filepath = path.join(tmp.path, "file.txt")
       await fs.writeFile(filepath, "one\ntwo\nthree\n", "utf-8")
@@ -250,7 +225,7 @@ describe("tool.write", () => {
             },
             ctx,
           )
-          expect(result.output).toContain("Reuse metadata.version as expectedVersion")
+          expect(result.output).toContain("Updated lines:")
 
           const edit = await EditTool.init()
           await edit.execute(

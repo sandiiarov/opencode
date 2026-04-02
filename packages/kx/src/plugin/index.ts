@@ -88,7 +88,7 @@ export namespace Plugin {
               if (init) hooks.push(init)
             }
 
-            let plugins = cfg.plugin ?? []
+            const plugins = cfg.plugin ?? []
             if (plugins.length) await Config.waitForDependencies()
 
             for (let plugin of plugins) {

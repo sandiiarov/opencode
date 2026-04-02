@@ -7,7 +7,6 @@ import { tmpdir } from "../fixture/fixture"
 import { Permission } from "../../src/permission"
 import { Agent } from "../../src/agent/agent"
 import { SessionID, MessageID } from "../../src/session/schema"
-import { computeLineHash } from "../../src/tool/hashline"
 
 const FIXTURES_DIR = path.join(import.meta.dir, "fixtures")
 
@@ -263,7 +262,7 @@ describe("tool.read truncation", () => {
     })
   })
 
-  test("returns stable anchors for text files", async () => {
+  test("returns line ids for text files", async () => {
     await using tmp = await tmpdir({
       init: async (dir) => {
         await Bun.write(path.join(dir, "small.txt"), "alpha\nbeta\n")
@@ -274,8 +273,8 @@ describe("tool.read truncation", () => {
       fn: async () => {
         const read = await ReadTool.init()
         const result = await read.execute({ filePath: path.join(tmp.path, "small.txt") }, ctx)
-        expect(result.output).toContain(`1#${computeLineHash(1, "alpha")}@`)
-        expect(result.output).toContain(`2#${computeLineHash(2, "beta")}@`)
+        expect(result.output).toMatch(/[a-z0-9]{4}\|alpha/i)
+        expect(result.output).toMatch(/[a-z0-9]{4}\|beta/i)
       },
     })
   })
@@ -292,10 +291,10 @@ describe("tool.read truncation", () => {
       fn: async () => {
         const read = await ReadTool.init()
         const result = await read.execute({ filePath: path.join(tmp.path, "offset.txt"), offset: 10, limit: 5 }, ctx)
-        expect(result.output).toContain(`10#${computeLineHash(10, "line10")}@`)
-        expect(result.output).toContain(`14#${computeLineHash(14, "line14")}@`)
-        expect(result.output).not.toContain(`9#${computeLineHash(9, "line10")}@`)
-        expect(result.output).not.toContain(`15#${computeLineHash(15, "line15")}@`)
+        expect(result.output).toMatch(/[a-z0-9]{4}\|line10/i)
+        expect(result.output).toMatch(/[a-z0-9]{4}\|line14/i)
+        expect(result.output).not.toContain("|line9")
+        expect(result.output).not.toContain("|line15")
         expect(result.output).toContain("line10")
         expect(result.output).toContain("line14")
         expect(result.output).not.toContain("line0")
@@ -387,7 +386,7 @@ describe("tool.read truncation", () => {
       fn: async () => {
         const read = await ReadTool.init()
         const result = await read.execute({ filePath: path.join(tmp.path, "long-line.txt") }, ctx)
-        expect(result.output).toContain(`1#${computeLineHash(1, longLine)}@`)
+        expect(result.output).toMatch(/[a-z0-9]{4}\|x+/i)
         expect(result.output).toContain(`${longLine.slice(0, 2000)}... (line truncated to 2000 chars)`)
         expect(result.output.length).toBeLessThan(3000)
       },

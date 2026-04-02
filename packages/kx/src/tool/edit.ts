@@ -13,6 +13,7 @@ import { Filesystem } from "../util/filesystem"
 import { Instance } from "../project/instance"
 import { assertExternalDirectory } from "./external-directory"
 import { apply, canCreate, changedPreview, type Edit } from "./hashline"
+import { FileLine } from "../file/line"
 
 const MAX_DIAGNOSTICS = 20
 
@@ -20,24 +21,20 @@ const Params = z.object({
   filePath: z.string().describe("The absolute path to the file to modify"),
   delete: z.boolean().optional().describe("Delete the file instead of editing it"),
   rename: z.string().optional().describe("Rename the file after applying edits"),
-  expectedVersion: z
-    .string()
-    .optional()
-    .describe("Optional file version token from a prior read, edit, or write result"),
   edits: z
     .array(
       z.object({
         op: z.enum(["replace", "append", "prepend"]).describe("The additive edit operation to apply"),
-        pos: z.string().optional().describe("Primary LINE#ID anchor from the read output"),
-        end: z.string().optional().describe("Inclusive end LINE#ID anchor for range replacements"),
+        pos: z.string().optional().describe("Primary line id from the read or grep output"),
+        end: z.string().optional().describe("Inclusive end line id for range replacements"),
         lines: z
           .union([z.array(z.string()), z.string(), z.null()])
           .optional()
-          .describe("Replacement or inserted lines without LINE#ID prefixes"),
+          .describe("Replacement or inserted lines without line id prefixes"),
       }),
     )
     .default([])
-    .describe("Hashline edits to apply against the original file state"),
+    .describe("Line-id edits to apply against the original file state"),
 })
 
 export const EditTool = Tool.define("edit", {
@@ -62,17 +59,18 @@ export const EditTool = Tool.define("edit", {
 
     let before = ""
     let after = ""
+    let body = ""
     let diff = ""
     let out = "Edit applied successfully."
     let target = movePath && movePath !== filePath ? movePath : filePath
+    let rows = [] as ReturnType<typeof FileLine.sync>
     let kind: "add" | "change" | "unlink" = "change"
-    let version = ""
 
     await FileTime.withLock(filePath, async () => {
       const stat = Filesystem.stat(filePath)
       const exists = Boolean(stat)
       if (stat?.isDirectory()) throw new Error(`Path is a directory, not a file: ${filePath}`)
-      if (exists) await FileTime.assert(ctx.sessionID, filePath, params.expectedVersion)
+      if (exists) await FileTime.assert(ctx.sessionID, filePath)
       if (!exists && params.delete) throw new Error(`File ${filePath} not found`)
       if (!exists && !canCreate(params.edits as Edit[])) throw new Error(`File ${filePath} not found`)
 
@@ -83,12 +81,13 @@ export const EditTool = Tool.define("edit", {
         .replace(/^\uFEFF/, "")
         .replace(/\r\n/g, "\n")
         .replace(/\r/g, "\n")
-      after = params.delete ? "" : apply(before, params.edits as Edit[])
+      after = params.delete ? "" : apply(filePath, before, params.edits as Edit[])
       if (!params.delete && !movePath && after === before) {
         throw new Error("No changes to apply: edits produced identical content.")
       }
-
-      diff = trimDiff(createTwoFilesPatch(target, target, before, after))
+      const trailing = /\n$/.test(before)
+      body = trailing && after !== "" ? `${after}\n` : after
+      diff = trimDiff(createTwoFilesPatch(target, target, before, body))
       const rel = [filePath, target]
         .filter((item, i, arr): item is string => Boolean(item) && arr.indexOf(item) === i)
         .map((item) => path.relative(Instance.worktree, item).replaceAll("\\", "/"))
@@ -101,7 +100,6 @@ export const EditTool = Tool.define("edit", {
           diff,
         },
       })
-
       if (params.delete) {
         await fs.unlink(filePath)
         await Bus.publish(FileWatcher.Event.Updated, { file: filePath, event: "unlink" })
@@ -112,11 +110,12 @@ export const EditTool = Tool.define("edit", {
       }
 
       const text = hadBom
-        ? `\uFEFF${ending === "\n" ? after : after.replaceAll("\n", "\r\n")}`
+        ? `\uFEFF${ending === "\n" ? body : body.replaceAll("\n", "\r\n")}`
         : ending === "\n"
-          ? after
-          : after.replaceAll("\n", "\r\n")
+          ? body
+          : body.replaceAll("\n", "\r\n")
       await Filesystem.write(target, text)
+      rows = FileLine.sync(target, body)
       if (movePath && movePath !== filePath && exists) {
         await fs.unlink(filePath)
         await Bus.publish(FileWatcher.Event.Updated, { file: filePath, event: "unlink" })
@@ -128,12 +127,12 @@ export const EditTool = Tool.define("edit", {
 
       await Bus.publish(File.Event.Edited, { file: target })
       await Bus.publish(FileWatcher.Event.Updated, { file: target, event: kind })
-      version = await FileTime.read(ctx.sessionID, target)
+      await FileTime.read(ctx.sessionID, target)
     })
 
     let additions = 0
     let deletions = 0
-    for (const item of diffLines(before, after)) {
+    for (const item of diffLines(before, body)) {
       if (item.added) additions += item.count || 0
       if (item.removed) deletions += item.count || 0
     }
@@ -141,22 +140,19 @@ export const EditTool = Tool.define("edit", {
     const filediff = {
       file: target,
       before,
-      after,
+      after: body,
       additions,
       deletions,
     }
 
     const diagnostics = params.delete ? {} : await report(target)
     if (!params.delete) {
-      const preview = changedPreview(before, after)
+      const preview = changedPreview(target, before, body)
       if (preview) out += `\n\nUpdated lines:\n<content>\n${preview}\n</content>`
-      out += `\n\nReuse metadata.version as expectedVersion to avoid rereading before the next edit or write.`
-
       const list = diagnostics[Filesystem.normalizePath(target)] ?? []
       const show = LSP.Diagnostic.sort(list.filter(LSP.Diagnostic.visible)).slice(0, MAX_DIAGNOSTICS)
       if (show.length) {
-        const lines = after.split("\n")
-        out += `\n\nLSP diagnostics detected in this file, please review:\n<diagnostics file="${target}">\n${show.map((item) => LSP.Diagnostic.pretty(item, lines[item.range.start.line])).join("\n")}\n</diagnostics>`
+        out += `\n\nLSP diagnostics detected in this file, please review:\n<diagnostics file="${target}">\n${show.map((item) => LSP.Diagnostic.pretty(item, rows[item.range.start.line]?.id)).join("\n")}\n</diagnostics>`
       }
     }
 
@@ -167,7 +163,6 @@ export const EditTool = Tool.define("edit", {
         diagnostics,
         diff,
         filediff,
-        version,
       },
     }
   },

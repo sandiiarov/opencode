@@ -2188,7 +2188,7 @@ export namespace LSPServer {
       return root
     },
     async spawn(root) {
-      let bin = Bun.which("graphql-lsp", {
+      const bin = Bun.which("graphql-lsp", {
         PATH: process.env["PATH"] + path.delimiter + path.join(Global.Path.bin, "node_modules", ".bin"),
       })
 
@@ -2261,7 +2261,7 @@ export namespace LSPServer {
       "stylelint.config.mts",
     ]),
     async spawn(root) {
-      let bin = Bun.which("stylelint-language-server", {
+      const bin = Bun.which("stylelint-language-server", {
         PATH: process.env["PATH"] + path.delimiter + path.join(Global.Path.bin, "node_modules", ".bin"),
       })
 
