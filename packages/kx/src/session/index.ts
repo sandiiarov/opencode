@@ -9,7 +9,7 @@ import { Config } from "../config/config"
 import { Flag } from "../flag/flag"
 import { Installation } from "../installation"
 
-import { Database, NotFoundError, eq, and, or, gte, isNull, desc, like, inArray, lt } from "../storage/db"
+import { Database, NotFoundError, eq, and, gte, isNull, desc, like, inArray, lt } from "../storage/db"
 import type { SQL } from "../storage/db"
 import { SessionTable, MessageTable, PartTable } from "./session.sql"
 import { ProjectTable } from "../project/project.sql"
@@ -662,7 +662,6 @@ export namespace Session {
   })
 
   export const remove = fn(SessionID.zod, async (sessionID) => {
-    const project = Instance.project
     try {
       const session = await get(sessionID)
       for (const child of await children(sessionID)) {

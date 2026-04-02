@@ -1,10 +1,10 @@
-import type { InputRenderable, ScrollBoxRenderable} from "@opentui/core";
+import type { InputRenderable, ScrollBoxRenderable } from "@opentui/core"
 import { RGBA, TextAttributes } from "@opentui/core"
 import { useKeyboard, useTerminalDimensions } from "@opentui/solid"
 import { useKeybind } from "@tui/context/keybind"
 import { useTheme, selectedForeground } from "@tui/context/theme"
 import { useDialog, type DialogContext } from "@tui/ui/dialog"
-import { entries, filter, flatMap, groupBy, isDeepEqual, pipe, take } from "remeda"
+import { entries, filter, flatMap, groupBy, isDeepEqual, pipe } from "remeda"
 import { batch, createEffect, createMemo, For, Show, type JSX, on } from "solid-js"
 import { createStore } from "solid-js/store"
 import * as fuzzysort from "fuzzysort"

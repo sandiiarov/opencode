@@ -1,6 +1,6 @@
 import { createStore } from "solid-js/store"
 import { createMemo, For, Match, Show, Switch } from "solid-js"
-import { Portal, useKeyboard, useRenderer, useTerminalDimensions, type JSX } from "@opentui/solid"
+import { Portal, useKeyboard, useTerminalDimensions, type JSX } from "@opentui/solid"
 import type { TextareaRenderable } from "@opentui/core"
 import { useKeybind } from "../../context/keybind"
 import { useTheme, selectedForeground } from "../../context/theme"
@@ -15,18 +15,7 @@ import { Keybind } from "@/util/keybind"
 import { Locale } from "@/util/locale"
 import { Global } from "@/global"
 import { useDialog } from "../../ui/dialog"
-import { useTuiConfig } from "../../context/tui-config"
-import {
-  FETCH_MARK,
-  READ_MARK,
-  REFRESH_MARK,
-  SEARCH_MARK,
-  SHELL_MARK,
-  TASK_MARK,
-  TOOL_MARK,
-  WARN_MARK,
-  WRITE_MARK,
-} from "./icons"
+import { FETCH_MARK, READ_MARK, REFRESH_MARK, SEARCH_MARK, SHELL_MARK, TASK_MARK, TOOL_MARK, WARN_MARK } from "./icons"
 import { EDIT_MARK, EXTERNAL_DIR_MARK } from "../../icons"
 
 type PermissionStage = "permission" | "always" | "reject"
@@ -61,16 +50,13 @@ function EditBody(props: { request: PermissionRequest }) {
   const themeState = useTheme()
   const theme = themeState.theme
   const syntax = themeState.syntax
-  const config = useTuiConfig()
-  const dimensions = useTerminalDimensions()
 
   const filepath = createMemo(() => (props.request.metadata?.filepath as string) ?? "")
   const diff = createMemo(() => (props.request.metadata?.diff as string) ?? "")
 
   const view = createMemo(() => {
-    const diffStyle = config.diff_style
-    if (diffStyle === "stacked") return "unified"
-    return dimensions().width > 120 ? "split" : "unified"
+    // Always use unified view to work around split view context line bug in @opentui/core
+    return "unified"
   })
 
   const ft = createMemo(() => filetype(filepath()))
@@ -608,7 +594,6 @@ function Prompt<const T extends Record<string, string>>(props: {
   })
 
   const hint = createMemo(() => (store.expanded ? "minimize" : "fullscreen"))
-  const renderer = useRenderer()
 
   const content = () => (
     <box

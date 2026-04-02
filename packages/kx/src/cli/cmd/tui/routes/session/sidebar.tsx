@@ -1,5 +1,5 @@
 import { useSync } from "@tui/context/sync"
-import { createMemo, For, Show, Switch, Match } from "solid-js"
+import { createMemo, For, Show } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useTheme } from "../../context/theme"
 import type { AssistantMessage } from "@kx/sdk/v2"

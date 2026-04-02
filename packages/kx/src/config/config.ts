@@ -1090,7 +1090,7 @@ export namespace Config {
           const plugin = data.plugin[i]
           try {
             data.plugin[i] = import.meta.resolve!(plugin, options.path)
-          } catch (e) {
+          } catch {
             try {
               // import.meta.resolve sometimes fails with newly created node_modules
               const require = createRequire(options.path)

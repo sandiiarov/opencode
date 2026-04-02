@@ -15,7 +15,7 @@ import { SessionCompaction } from "./compaction"
 import { Permission } from "@/permission"
 import { Question } from "@/question"
 import { PartID } from "./schema"
-import type { SessionID, MessageID } from "./schema"
+import type { SessionID } from "./schema"
 
 export namespace SessionProcessor {
   const DOOM_LOOP_THRESHOLD = 3

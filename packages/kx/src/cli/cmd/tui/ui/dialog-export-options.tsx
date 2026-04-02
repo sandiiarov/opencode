@@ -1,9 +1,9 @@
-import type { TextareaRenderable} from "@opentui/core";
+import type { TextareaRenderable } from "@opentui/core"
 import { TextAttributes } from "@opentui/core"
 import { useTheme } from "../context/theme"
 import { useDialog, type DialogContext } from "./dialog"
 import { createStore } from "solid-js/store"
-import { onMount, Show, type JSX } from "solid-js"
+import { onMount, Show } from "solid-js"
 import { useKeyboard } from "@opentui/solid"
 
 export type DialogExportOptionsProps = {

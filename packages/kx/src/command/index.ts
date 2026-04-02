@@ -6,13 +6,10 @@ import { Effect, Layer, ServiceMap } from "effect"
 import z from "zod"
 import { Config } from "../config/config"
 import { Skill } from "../skill"
-import { Log } from "../util/log"
 import PROMPT_INITIALIZE from "./template/initialize.txt"
 import PROMPT_REVIEW from "./template/review.txt"
 
 export namespace Command {
-  const log = Log.create({ service: "command" })
-
   type State = {
     commands: Record<string, Info>
   }

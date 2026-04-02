@@ -41,13 +41,13 @@ import {
   STATUS_ON_MARK,
 } from "../../icons"
 import {
-  BoxRenderable,
-  ScrollBoxRenderable,
   addDefaultParsers,
   MacOSScrollAccel,
-  type ScrollAcceleration,
   TextAttributes,
   RGBA,
+  type BoxRenderable,
+  type ScrollBoxRenderable,
+  type ScrollAcceleration,
 } from "@opentui/core"
 import { Prompt, type PromptRef } from "@tui/component/prompt"
 import type { AssistantMessage, Part, ToolPart, UserMessage, TextPart, ReasoningPart } from "@kx/sdk/v2"
@@ -56,9 +56,9 @@ import { Locale } from "@/util/locale"
 import type { Tool } from "@/tool/tool"
 import type { ReadTool } from "@/tool/read"
 import type { WriteTool } from "@/tool/write"
-import { BashTool } from "@/tool/bash"
+import type { BashTool } from "@/tool/bash"
 import type { GlobTool } from "@/tool/glob"
-import { TodoWriteTool } from "@/tool/todo"
+import type { TodoWriteTool } from "@/tool/todo"
 import type { GrepTool } from "@/tool/grep"
 import type { ListTool } from "@/tool/ls"
 import type { EditTool } from "@/tool/edit"
@@ -90,7 +90,6 @@ import { Toast, useToast } from "../../ui/toast"
 import { useKV } from "../../context/kv.tsx"
 import { Editor } from "../../util/editor"
 import stripAnsi from "strip-ansi"
-import { Footer } from "./footer.tsx"
 import { usePromptRef } from "../../context/prompt"
 import { useExit } from "../../context/exit"
 import { Filesystem } from "@/util/filesystem"
@@ -174,11 +173,10 @@ export function Session() {
   const [showThinking, setShowThinking] = kv.signal("thinking_visibility", true)
   const [timestamps, setTimestamps] = kv.signal<"hide" | "show">("timestamps", "hide")
   const [showDetails, setShowDetails] = kv.signal("tool_details_visibility", true)
-  const [showAssistantMetadata, setShowAssistantMetadata] = kv.signal("assistant_metadata_visibility", true)
+  const [showAssistantMetadata] = kv.signal("assistant_metadata_visibility", true)
   const [showScrollbar, setShowScrollbar] = kv.signal("scrollbar_visible", true)
   const [showHeader, setShowHeader] = kv.signal("header_visible", true)
   const [diffWrapMode] = kv.signal<"word" | "none">("diff_wrap_mode", "word")
-  const [animationsEnabled, setAnimationsEnabled] = kv.signal("animations_enabled", true)
   const [showGenericToolOutput, setShowGenericToolOutput] = kv.signal("generic_tool_output_visibility", false)
 
   const wide = createMemo(() => dimensions().width > 120)
@@ -875,7 +873,7 @@ export function Session() {
           )
           await Clipboard.copy(transcript)
           toast.show({ message: "Session transcript copied to clipboard!", variant: "success" })
-        } catch (error) {
+        } catch {
           toast.show({ message: "Failed to copy session transcript", variant: "error" })
         }
         dialog.clear()
@@ -936,7 +934,7 @@ export function Session() {
 
             toast.show({ message: `Session exported to ${filename}`, variant: "success" })
           }
-        } catch (error) {
+        } catch {
           toast.show({ message: "Failed to export session", variant: "error" })
         }
         dialog.clear()
@@ -1021,7 +1019,7 @@ export function Session() {
           ),
         }
       })
-    } catch (error) {
+    } catch {
       return []
     }
   })
@@ -1343,7 +1341,6 @@ function UserMessage(props: {
 }
 
 function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; last: boolean }) {
-  const local = useLocal()
   const { theme } = useTheme()
   const sync = useSync()
   const messages = createMemo(() => sync.data.message[props.message.sessionID] ?? [])
@@ -1705,17 +1702,6 @@ function GenericTool(props: ToolProps<any>) {
           </Show>
         </box>
       </BlockTool>
-    </Show>
-  )
-}
-
-function ToolTitle(props: { fallback: string; when: any; icon: string; children: JSX.Element }) {
-  const { theme } = useTheme()
-  return (
-    <Show fallback={<Spinner color={theme.text}>{props.fallback}</Spinner>} when={props.when}>
-      <text paddingLeft={3} fg={theme.text}>
-        <span style={{ bold: true }}>{props.icon}</span> {props.children}
-      </text>
     </Show>
   )
 }
@@ -2122,10 +2108,7 @@ function WebSearch(props: ToolProps<any>) {
 }
 
 function Task(props: ToolProps<typeof TaskTool>) {
-  const { theme } = useTheme()
-  const keybind = useKeybind()
   const { navigate } = useRoute()
-  const local = useLocal()
   const sync = useSync()
 
   onMount(() => {
@@ -2156,7 +2139,7 @@ function Task(props: ToolProps<typeof TaskTool>) {
 
   const content = createMemo(() => {
     if (!props.input.description) return ""
-    let content = [`Task ${props.input.description}`]
+    const content = [`Task ${props.input.description}`]
 
     if (isRunning() && tools().length > 0) {
       // content[0] += ` · ${tools().length} toolcalls`
@@ -2195,10 +2178,8 @@ function Edit(props: ToolProps<typeof EditTool>) {
   const { theme, syntax } = useTheme()
 
   const view = createMemo(() => {
-    const diffStyle = ctx.tui.diff_style
-    if (diffStyle === "stacked") return "unified"
-    // Default to "auto" behavior
-    return ctx.width > 120 ? "split" : "unified"
+    // Always use unified view to work around split view context line bug in @opentui/core
+    return "unified"
   })
 
   const ft = createMemo(() => filetype(props.input.filePath))

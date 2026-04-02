@@ -41,7 +41,7 @@ export const { use: useRoute, provider: RouteProvider } = createSimpleContext({
 
 export type RouteContext = ReturnType<typeof useRoute>
 
-export function useRouteData<T extends Route["type"]>(type: T) {
+export function useRouteData<T extends Route["type"]>(_type: T) {
   const route = useRoute()
-  return route.data as Extract<Route, { type: typeof type }>
+  return route.data as Extract<Route, { type: T }>
 }

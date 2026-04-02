@@ -6,7 +6,6 @@ import { BusEvent } from "@/bus/bus-event"
 import { Bus } from "@/bus"
 import { lazy } from "../../util/lazy"
 import { AsyncQueue } from "../../util/queue"
-import { Instance } from "@/project/instance"
 
 const log = Log.create({ service: "server" })
 
