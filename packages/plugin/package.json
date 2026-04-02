@@ -6,7 +6,8 @@
   "license": "MIT",
   "scripts": {
     "typecheck": "tsgo --noEmit",
-    "build": "tsc"
+    "build": "tsc",
+    "lint": "eslint src"
   },
   "exports": {
     ".": "./src/index.ts",
@@ -29,9 +30,9 @@
     }
   },
   "devDependencies": {
-    "@tsconfig/node22": "catalog:",
     "@types/node": "catalog:",
     "typescript": "catalog:",
-    "@typescript/native-preview": "catalog:"
+    "@typescript/native-preview": "catalog:",
+    "@kx/config-eslint": "workspace:*"
   }
 }

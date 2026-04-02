@@ -4,6 +4,9 @@
   "globalPassThroughEnv": ["CI", "KX_DISABLE_SHARE"],
   "tasks": {
     "typecheck": {},
+    "lint": {
+      "outputs": []
+    },
     "build": {
       "dependsOn": [],
       "outputs": ["dist/**"]

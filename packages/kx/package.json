@@ -15,7 +15,8 @@
     "dev": "bun run --conditions=browser ./src/index.ts",
     "clean": "rm -rf node_modules dist",
     "format": "bun run --prettier --write src/**/*.ts",
-    "db": "bun drizzle-kit"
+    "db": "bun drizzle-kit",
+    "lint": "eslint src"
   },
   "bin": {
     "kx": "./bin/kx"
@@ -32,7 +33,6 @@
   },
   "devDependencies": {
     "@effect/language-service": "0.79.0",
-    "@tsconfig/bun": "catalog:",
     "@types/bun": "catalog:",
     "@types/cross-spawn": "6.0.6",
     "@types/mime-types": "3.0.1",
@@ -43,7 +43,8 @@
     "@typescript/native-preview": "catalog:",
     "drizzle-kit": "catalog:",
     "typescript": "catalog:",
-    "vscode-languageserver-types": "3.17.5"
+    "vscode-languageserver-types": "3.17.5",
+    "@kx/config-eslint": "workspace:*"
   },
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "3.0.82",
