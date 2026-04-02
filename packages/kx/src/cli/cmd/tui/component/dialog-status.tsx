@@ -6,7 +6,7 @@ import { useSync } from "@tui/context/sync"
 import { For, Show, createMemo } from "solid-js"
 import { lspcolor, lspicon } from "@tui/util/icon"
 import { STATUS_OFF_MARK, STATUS_ON_MARK } from "../icons"
-export type DialogStatusProps = {}
+export type DialogStatusProps = Record<string, never>
 
 export function DialogStatus() {
   const sync = useSync()

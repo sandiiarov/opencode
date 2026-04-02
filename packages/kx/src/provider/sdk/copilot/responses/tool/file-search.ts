@@ -44,7 +44,7 @@ export const fileSearchOutputSchema = z.object({
 })
 
 export const fileSearch = createProviderDefinedToolFactoryWithOutputSchema<
-  {},
+  object,
   {
     /**
      * The search query to execute.

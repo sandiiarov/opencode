@@ -212,7 +212,7 @@ export interface Hooks {
     },
   ) => Promise<void>
   "experimental.chat.messages.transform"?: (
-    input: {},
+    input: object,
     output: {
       messages: {
         info: Message

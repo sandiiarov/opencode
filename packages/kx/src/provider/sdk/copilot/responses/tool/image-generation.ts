@@ -93,7 +93,7 @@ type ImageGenerationArgs = {
 }
 
 const imageGenerationToolFactory = createProviderDefinedToolFactoryWithOutputSchema<
-  {},
+  object,
   {
     /**
      * The generated image encoded in base64.

@@ -56,7 +56,7 @@ export const localShell = createProviderDefinedToolFactoryWithOutputSchema<
      */
     output: string
   },
-  {}
+  object
 >({
   id: "openai.local_shell",
   name: "local_shell",

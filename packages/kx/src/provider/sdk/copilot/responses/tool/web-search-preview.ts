@@ -41,9 +41,7 @@ export const webSearchPreviewArgsSchema = z.object({
 })
 
 export const webSearchPreview = createProviderDefinedToolFactory<
-  {
-    // Web search doesn't take input parameters - it's controlled by the prompt
-  },
+  object,
   {
     /**
      * Search context size to use for the web search.
