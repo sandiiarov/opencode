@@ -126,7 +126,7 @@
 
 ### Review only if needed
 
-- [ ] `23c865608` split models.dev and config model definitions
+- [x] `23c865608` split models.dev and config model definitions (integrated: added a config-scoped `Model` schema in `packages/kx/src/config/config.ts`, narrowed `packages/kx/src/provider/models.ts` so models.dev only describes upstream catalog data, and stopped inheriting `headers` / `options` from models.dev in `packages/kx/src/provider/provider.ts`; verified with config/provider tests plus typecheck, lint, and build)
 - [ ] `0bae38c06` instruction service migration
 - [ ] `26fb6b878` add Effect-returning versions of MessageV2 functions
 - [ ] `181b5f623` use Provider service in effect layers
