@@ -430,7 +430,7 @@ export namespace ProviderTransform {
         }
         return Object.fromEntries(OPENAI_EFFORTS.map((effort) => [effort, { reasoningEffort: effort }]))
 
-      case "@ai-sdk/github-copilot":
+      case "@ai-sdk/github-copilot": {
         if (model.id.includes("gemini")) {
           // currently github copilot only returns thinking
           return {}
@@ -457,21 +457,22 @@ export namespace ProviderTransform {
             },
           ]),
         )
+      }
 
-      case "@ai-sdk/cerebras":
       // https://v5.ai-sdk.dev/providers/ai-sdk-providers/cerebras
-      case "@ai-sdk/togetherai":
       // https://v5.ai-sdk.dev/providers/ai-sdk-providers/togetherai
-      case "@ai-sdk/xai":
       // https://v5.ai-sdk.dev/providers/ai-sdk-providers/xai
-      case "@ai-sdk/deepinfra":
       // https://v5.ai-sdk.dev/providers/ai-sdk-providers/deepinfra
-      case "venice-ai-sdk-provider":
       // https://docs.venice.ai/overview/guides/reasoning-models#reasoning-effort
+      case "@ai-sdk/cerebras":
+      case "@ai-sdk/togetherai":
+      case "@ai-sdk/xai":
+      case "@ai-sdk/deepinfra":
+      case "venice-ai-sdk-provider":
       case "@ai-sdk/openai-compatible":
         return Object.fromEntries(WIDELY_SUPPORTED_EFFORTS.map((effort) => [effort, { reasoningEffort: effort }]))
 
-      case "@ai-sdk/azure":
+      case "@ai-sdk/azure": {
         // https://v5.ai-sdk.dev/providers/ai-sdk-providers/azure
         if (id === "o1-mini") return {}
         const azureEfforts = ["low", "medium", "high"]
@@ -488,7 +489,8 @@ export namespace ProviderTransform {
             },
           ]),
         )
-      case "@ai-sdk/openai":
+      }
+      case "@ai-sdk/openai": {
         // https://v5.ai-sdk.dev/providers/ai-sdk-providers/openai
         if (id === "gpt-5-pro") return {}
         const openaiEfforts = iife(() => {
@@ -518,12 +520,12 @@ export namespace ProviderTransform {
             },
           ]),
         )
+      }
 
-      case "@ai-sdk/anthropic":
       // https://v5.ai-sdk.dev/providers/ai-sdk-providers/anthropic
+      // https://v5.ai-sdk.dev/providers/ai-sdk-providers/google-vertex#anthropic-provider
+      case "@ai-sdk/anthropic":
       case "@ai-sdk/google-vertex/anthropic":
-        // https://v5.ai-sdk.dev/providers/ai-sdk-providers/google-vertex#anthropic-provider
-
         if (isAnthropicAdaptive) {
           return Object.fromEntries(
             adaptiveEfforts.map((effort) => [
@@ -599,10 +601,10 @@ export namespace ProviderTransform {
           ]),
         )
 
-      case "@ai-sdk/google-vertex":
       // https://v5.ai-sdk.dev/providers/ai-sdk-providers/google-vertex
-      case "@ai-sdk/google":
-        // https://v5.ai-sdk.dev/providers/ai-sdk-providers/google-generative-ai
+      // https://v5.ai-sdk.dev/providers/ai-sdk-providers/google-generative-ai
+      case "@ai-sdk/google-vertex":
+      case "@ai-sdk/google": {
         if (id.includes("2.5")) {
           return {
             high: {
@@ -635,6 +637,7 @@ export namespace ProviderTransform {
             },
           ]),
         )
+      }
 
       case "@ai-sdk/mistral":
         // https://v5.ai-sdk.dev/providers/ai-sdk-providers/mistral
@@ -644,7 +647,7 @@ export namespace ProviderTransform {
         // https://v5.ai-sdk.dev/providers/ai-sdk-providers/cohere
         return {}
 
-      case "@ai-sdk/groq":
+      case "@ai-sdk/groq": {
         // https://v5.ai-sdk.dev/providers/ai-sdk-providers/groq
         const groqEffort = ["none", ...WIDELY_SUPPORTED_EFFORTS]
         return Object.fromEntries(
@@ -655,6 +658,7 @@ export namespace ProviderTransform {
             },
           ]),
         )
+      }
 
       case "@ai-sdk/perplexity":
         // https://v5.ai-sdk.dev/providers/ai-sdk-providers/perplexity

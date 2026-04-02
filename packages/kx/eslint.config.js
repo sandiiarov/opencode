@@ -16,8 +16,6 @@ export default [
       "@typescript-eslint/no-unused-vars": "off",
       "prefer-const": "off",
       "require-yield": "off",
-      "no-case-declarations": "off",
-      "no-fallthrough": "off",
     },
   },
 ]

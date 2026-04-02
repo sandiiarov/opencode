@@ -60,7 +60,7 @@ export namespace SessionProcessor {
                   await SessionStatus.set(input.sessionID, { type: "busy" })
                   break
 
-                case "reasoning-start":
+                case "reasoning-start": {
                   if (value.id in reasoningMap) {
                     continue
                   }
@@ -78,6 +78,7 @@ export namespace SessionProcessor {
                   reasoningMap[value.id] = reasoningPart
                   await Session.updatePart(reasoningPart)
                   break
+                }
 
                 case "reasoning-delta":
                   if (value.id in reasoningMap) {
@@ -109,7 +110,7 @@ export namespace SessionProcessor {
                   }
                   break
 
-                case "tool-input-start":
+                case "tool-input-start": {
                   const part = await Session.updatePart({
                     id: toolcalls[value.id]?.id ?? PartID.ascending(),
                     messageID: input.assistantMessage.id,
@@ -125,6 +126,7 @@ export namespace SessionProcessor {
                   })
                   toolcalls[value.id] = part as Message.ToolPart
                   break
+                }
 
                 case "tool-input-delta":
                   break
@@ -242,7 +244,7 @@ export namespace SessionProcessor {
                   })
                   break
 
-                case "finish-step":
+                case "finish-step": {
                   const usage = Session.getUsage({
                     model: input.model,
                     usage: value.usage,
@@ -287,8 +289,9 @@ export namespace SessionProcessor {
                     needsCompaction = true
                   }
                   break
+                }
 
-                case "text-start":
+                case "text-start": {
                   currentText = {
                     id: PartID.ascending(),
                     messageID: input.assistantMessage.id,
@@ -302,8 +305,9 @@ export namespace SessionProcessor {
                   }
                   await Session.updatePart(currentText)
                   break
+                }
 
-                case "text-delta":
+                case "text-delta": {
                   if (currentText) {
                     currentText.text += value.text
                     if (value.providerMetadata) currentText.metadata = value.providerMetadata
@@ -316,8 +320,9 @@ export namespace SessionProcessor {
                     })
                   }
                   break
+                }
 
-                case "text-end":
+                case "text-end": {
                   if (currentText) {
                     currentText.text = currentText.text.trimEnd()
                     const textOutput = await Plugin.trigger(
@@ -339,6 +344,7 @@ export namespace SessionProcessor {
                   }
                   currentText = undefined
                   break
+                }
 
                 case "finish":
                   break
