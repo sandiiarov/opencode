@@ -127,7 +127,7 @@
 ### Review only if needed
 
 - [x] `23c865608` split models.dev and config model definitions (integrated: added a config-scoped `Model` schema in `packages/kx/src/config/config.ts`, narrowed `packages/kx/src/provider/models.ts` so models.dev only describes upstream catalog data, and stopped inheriting `headers` / `options` from models.dev in `packages/kx/src/provider/provider.ts`; verified with config/provider tests plus typecheck, lint, and build)
-- [ ] `0bae38c06` instruction service migration
+- [x] `0bae38c06` instruction service migration (partially integrated: skipped the broad Effect service/layer migration because local `packages/kx/src/session/prompt.ts` and config/filesystem paths still use async facades, but ported the behavior-relevant bits in `packages/kx/src/session/instruction.ts` so project `CLAUDE.md` respects `KX_DISABLE_CLAUDE_CODE_PROMPT` and deprecated `CONTEXT.md` still resolves; added regression coverage in `packages/kx/test/session/instruction.test.ts`)
 - [ ] `26fb6b878` add Effect-returning versions of MessageV2 functions
 - [ ] `181b5f623` use Provider service in effect layers
 - [ ] `2f405daa9` use Effect services instead of async facades in provider/auth/file

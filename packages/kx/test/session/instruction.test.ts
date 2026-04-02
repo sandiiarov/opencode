@@ -70,6 +70,70 @@ describe("InstructionPrompt.resolve", () => {
   })
 })
 
+describe("InstructionPrompt project file selection", () => {
+  let originalDisableClaude: string | undefined
+
+  beforeEach(() => {
+    originalDisableClaude = process.env["KX_DISABLE_CLAUDE_CODE_PROMPT"]
+  })
+
+  afterEach(() => {
+    if (originalDisableClaude === undefined) {
+      delete process.env["KX_DISABLE_CLAUDE_CODE_PROMPT"]
+      return
+    }
+
+    process.env["KX_DISABLE_CLAUDE_CODE_PROMPT"] = originalDisableClaude
+  })
+
+  test("skips project CLAUDE.md when KX_DISABLE_CLAUDE_CODE_PROMPT is set", async () => {
+    await using tmp = await tmpdir({
+      init: async (dir) => {
+        await Bun.write(path.join(dir, "CLAUDE.md"), "# Claude Instructions")
+        await Bun.write(path.join(dir, "src", "file.ts"), "const x = 1")
+      },
+    })
+
+    process.env["KX_DISABLE_CLAUDE_CODE_PROMPT"] = "1"
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const system = await InstructionPrompt.systemPaths()
+        expect(system.has(path.join(tmp.path, "CLAUDE.md"))).toBe(false)
+
+        const results = await InstructionPrompt.resolve([], path.join(tmp.path, "src", "file.ts"), "test-message-3")
+        expect(results).toEqual([])
+      },
+    })
+  })
+
+  test("falls back to deprecated CONTEXT.md when newer instruction files are absent", async () => {
+    await using tmp = await tmpdir({
+      init: async (dir) => {
+        await Bun.write(path.join(dir, "subdir", "CONTEXT.md"), "# Legacy Instructions")
+        await Bun.write(path.join(dir, "subdir", "nested", "file.ts"), "const x = 1")
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const system = await InstructionPrompt.systemPaths()
+        expect(system.has(path.join(tmp.path, "subdir", "CONTEXT.md"))).toBe(false)
+
+        const results = await InstructionPrompt.resolve(
+          [],
+          path.join(tmp.path, "subdir", "nested", "file.ts"),
+          "test-message-4",
+        )
+        expect(results).toHaveLength(1)
+        expect(results[0].filepath).toBe(path.join(tmp.path, "subdir", "CONTEXT.md"))
+      },
+    })
+  })
+})
+
 describe("InstructionPrompt.systemPaths KX_CONFIG_DIR", () => {
   let originalConfigDir: string | undefined
 

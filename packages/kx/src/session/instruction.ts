@@ -11,7 +11,18 @@ import type { Message } from "./message"
 
 const log = Log.create({ service: "instruction" })
 
-const FILES = ["AGENTS.md", "CLAUDE.md"]
+function claudePromptDisabled() {
+  const value = process.env["KX_DISABLE_CLAUDE_CODE_PROMPT"]?.toLowerCase()
+  return Flag.KX_DISABLE_CLAUDE_CODE || value === "true" || value === "1"
+}
+
+function files() {
+  return [
+    "AGENTS.md",
+    ...(claudePromptDisabled() ? [] : ["CLAUDE.md"]),
+    "CONTEXT.md", // deprecated
+  ]
+}
 
 function globalFiles() {
   const files = []
@@ -19,7 +30,7 @@ function globalFiles() {
     files.push(path.join(Flag.KX_CONFIG_DIR, "AGENTS.md"))
   }
   files.push(path.join(Global.Path.config, "AGENTS.md"))
-  if (!Flag.KX_DISABLE_CLAUDE_CODE_PROMPT) {
+  if (!claudePromptDisabled()) {
     files.push(path.join(os.homedir(), ".claude", "CLAUDE.md"))
   }
   return files
@@ -68,7 +79,7 @@ export namespace InstructionPrompt {
     const paths = new Set<string>()
 
     if (!Flag.KX_DISABLE_PROJECT_CONFIG) {
-      for (const file of FILES) {
+      for (const file of files()) {
         const matches = await Filesystem.findUp(file, Instance.directory, Instance.worktree)
         if (matches.length > 0) {
           matches.forEach((p) => {
@@ -153,7 +164,7 @@ export namespace InstructionPrompt {
   }
 
   export async function find(dir: string) {
-    for (const file of FILES) {
+    for (const file of files()) {
       const filepath = path.resolve(path.join(dir, file))
       if (await Filesystem.exists(filepath)) return filepath
     }
