@@ -20,7 +20,6 @@ export default [
       "no-constant-condition": "off",
       "no-fallthrough": "off",
       "no-useless-assignment": "off",
-      "no-useless-catch": "off",
     },
   },
 ]
