@@ -525,7 +525,7 @@ export namespace Message {
       and(eq(MessageTable.time_created, row.time), lt(MessageTable.id, row.id)),
     )
 
-  async function hydrate(rows: (typeof MessageTable.$inferSelect)[]) {
+  function hydrate(rows: (typeof MessageTable.$inferSelect)[]) {
     const ids = rows.map((row) => row.id)
     const partByMessage = new Map<string, Message.Part[]>()
     if (ids.length > 0) {
@@ -792,7 +792,7 @@ export namespace Message {
       limit: z.number().int().positive(),
       before: z.string().optional(),
     }),
-    async (input) => {
+    (input) => {
       const before = input.before ? cursor.decode(input.before) : undefined
       const where = before
         ? and(eq(MessageTable.session_id, input.sessionID), older(before))
@@ -818,10 +818,10 @@ export namespace Message {
       }
 
       const more = rows.length > input.limit
-      const page = more ? rows.slice(0, input.limit) : rows
-      const items = await hydrate(page)
+      const slice = more ? rows.slice(0, input.limit) : rows
+      const items = hydrate(slice)
       items.reverse()
-      const tail = page.at(-1)
+      const tail = slice.at(-1)
       return {
         items,
         more,
@@ -830,11 +830,11 @@ export namespace Message {
     },
   )
 
-  export const stream = fn(SessionID.zod, async function* (sessionID) {
+  export const stream = fn(SessionID.zod, function* (sessionID) {
     const size = 50
     let before: string | undefined
     while (true) {
-      const next = await page({ sessionID, limit: size, before })
+      const next = page({ sessionID, limit: size, before })
       if (next.items.length === 0) break
       for (let i = next.items.length - 1; i >= 0; i--) {
         yield next.items[i]
@@ -844,7 +844,7 @@ export namespace Message {
     }
   })
 
-  export const parts = fn(MessageID.zod, async (message_id) => {
+  export const parts = fn(MessageID.zod, (message_id) => {
     const rows = Database.use((db) =>
       db.select().from(PartTable).where(eq(PartTable.message_id, message_id)).orderBy(PartTable.id).all(),
     )
@@ -858,7 +858,7 @@ export namespace Message {
       sessionID: SessionID.zod,
       messageID: MessageID.zod,
     }),
-    async (input): Promise<WithParts> => {
+    (input): WithParts => {
       const row = Database.use((db) =>
         db
           .select()
@@ -869,15 +869,15 @@ export namespace Message {
       if (!row) throw new NotFoundError({ message: `Message not found: ${input.messageID}` })
       return {
         info: info(row),
-        parts: await parts(input.messageID),
+        parts: parts(input.messageID),
       }
     },
   )
 
-  export async function filterCompacted(stream: AsyncIterable<Message.WithParts>) {
+  export function filterCompacted(stream: Iterable<Message.WithParts>) {
     const result = [] as Message.WithParts[]
     const completed = new Set<string>()
-    for await (const msg of stream) {
+    for (const msg of stream) {
       result.push(msg)
       if (
         msg.info.role === "user" &&

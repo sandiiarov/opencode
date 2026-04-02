@@ -526,14 +526,9 @@ export namespace Session {
       sessionID: SessionID.zod,
       limit: z.number().optional(),
     }),
-    async (input) => {
-      const result = [] as Message.WithParts[]
-      for await (const msg of Message.stream(input.sessionID)) {
-        if (input.limit && result.length >= input.limit) break
-        result.push(msg)
-      }
-      result.reverse()
-      return result
+    (input) => {
+      if (input.limit) return Message.page({ sessionID: input.sessionID, limit: input.limit }).items
+      return Array.from(Message.stream(input.sessionID)).reverse()
     },
   )
 

@@ -73,17 +73,16 @@ export namespace SessionSummary {
       messageID: MessageID.zod,
     }),
     async (input) => {
-      await Session.messages({ sessionID: input.sessionID })
-        .then((all) =>
-          Promise.all([
-            summarizeSession({ sessionID: input.sessionID, messages: all }),
-            summarizeMessage({ messageID: input.messageID, messages: all }),
-          ]),
-        )
-        .catch((err) => {
-          if (NotFoundError.isInstance(err)) return
-          throw err
-        })
+      try {
+        const all = Session.messages({ sessionID: input.sessionID })
+        await Promise.all([
+          summarizeSession({ sessionID: input.sessionID, messages: all }),
+          summarizeMessage({ messageID: input.messageID, messages: all }),
+        ])
+      } catch (err) {
+        if (NotFoundError.isInstance(err)) return
+        throw err
+      }
     },
   )
 
