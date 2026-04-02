@@ -66,8 +66,7 @@ export const BashTool = Tool.define("bash", async () => {
   log.info("bash tool using shell", { shell })
 
   return {
-    description: DESCRIPTION.replaceAll("${directory}", Instance.directory)
-      .replaceAll("${os}", process.platform)
+    description: DESCRIPTION.replaceAll("${os}", process.platform)
       .replaceAll("${shell}", name)
       .replaceAll("${chaining}", chain)
       .replaceAll("${maxLines}", String(Truncate.MAX_LINES))
