@@ -89,6 +89,7 @@ export namespace LSPClient {
       z.object({
         serverID: z.string(),
         path: z.string(),
+        generation: z.number(),
       }),
     ),
   }
@@ -106,6 +107,7 @@ export namespace LSPClient {
 
     const diagnostics = new Map<string, Diagnostic[]>()
 
+    const seqs = new Map<string, number>()
     const suggest = async (file: string, diagnostic: Diagnostic) => {
       if (!codeAction) return diagnostic
       const result = await withTimeout(
@@ -138,12 +140,16 @@ export namespace LSPClient {
       return Promise.all(arr.map((diagnostic) => suggest(file, diagnostic)))
     }
 
-    const store = async (file: string, arr: Diagnostic[]) => {
+    const store = async (file: string, arr: Diagnostic[], generation: number) => {
+      const seq = (seqs.get(file) ?? 0) + 1
+      seqs.set(file, seq)
       const next = await enrich(file, arr)
+      if (seqs.get(file) !== seq) return
+      if ((files[file] ?? generation) !== generation) return
       const exists = diagnostics.has(file)
       diagnostics.set(file, next)
       if (!exists && input.serverID === "typescript") return
-      Bus.publish(Event.Diagnostics, { path: file, serverID: input.serverID })
+      Bus.publish(Event.Diagnostics, { path: file, serverID: input.serverID, generation })
     }
 
     connection.onNotification("textDocument/publishDiagnostics", (params) => {
@@ -152,7 +158,8 @@ export namespace LSPClient {
         path: filePath,
         count: params.diagnostics.length,
       })
-      void store(filePath, params.diagnostics)
+      const generation = typeof params.version === "number" ? params.version : -1
+      void store(filePath, params.diagnostics, generation)
     })
     connection.onRequest("window/workDoneProgress/create", (params) => {
       l.info("window/workDoneProgress/create", params)
@@ -175,7 +182,7 @@ export namespace LSPClient {
       [path: string]: number
     } = {}
 
-    const pull = async (file: string) => {
+    const pull = async (file: string, generation = files[Filesystem.normalizePath(file)] ?? 0) => {
       const path = Filesystem.normalizePath(file)
       const result = await connection
         .sendRequest("textDocument/diagnostic", {
@@ -185,10 +192,7 @@ export namespace LSPClient {
         })
         .catch(() => undefined)
       if (!result) return
-      const next = await enrich(path, items(result))
-      if (next.length === 0) return
-      diagnostics.set(path, next)
-      Bus.publish(Event.Diagnostics, { path, serverID: input.serverID })
+      await store(path, items(result), generation)
     }
 
     connection.onRequest("workspace/diagnostic/refresh", async () => {
@@ -271,12 +275,11 @@ export namespace LSPClient {
         return connection
       },
       notify: {
-        async open(input: { path: string }) {
+        async open(input: { path: string; waitForDiagnostics?: boolean }) {
           input.path = path.isAbsolute(input.path) ? input.path : path.resolve(Instance.directory, input.path)
           const text = await Filesystem.readText(input.path)
           const extension = path.extname(input.path)
           const languageId = LANGUAGE_EXTENSIONS[extension] ?? "plaintext"
-
           const version = files[input.path]
           if (version !== undefined) {
             log.info("workspace/didChangeWatchedFiles", input)
@@ -291,6 +294,11 @@ export namespace LSPClient {
 
             const next = version + 1
             files[input.path] = next
+            diagnostics.set(input.path, [])
+            const wait =
+              input.waitForDiagnostics && !diagnostic
+                ? result.waitForDiagnostics({ path: input.path, generation: next })
+                : Promise.resolve()
             log.info("textDocument/didChange", {
               path: input.path,
               version: next,
@@ -302,8 +310,12 @@ export namespace LSPClient {
               },
               contentChanges: [{ text }],
             })
-            if (diagnostic) await pull(input.path)
-            return
+            if (diagnostic) {
+              await pull(input.path, next)
+              return next
+            }
+            await wait
+            return next
           }
 
           log.info("workspace/didChangeWatchedFiles", input)
@@ -318,6 +330,11 @@ export namespace LSPClient {
 
           log.info("textDocument/didOpen", input)
           diagnostics.delete(input.path)
+          files[input.path] = 0
+          const wait =
+            input.waitForDiagnostics && !diagnostic
+              ? result.waitForDiagnostics({ path: input.path, generation: 0 })
+              : Promise.resolve()
           await connection.sendNotification("textDocument/didOpen", {
             textDocument: {
               uri: pathToFileURL(input.path).href,
@@ -326,33 +343,36 @@ export namespace LSPClient {
               text,
             },
           })
-          files[input.path] = 0
-          if (diagnostic) await pull(input.path)
-          return
+          if (diagnostic) {
+            await pull(input.path, 0)
+            return 0
+          }
+          await wait
+          return 0
         },
       },
       get diagnostics() {
         return diagnostics
       },
-      async waitForDiagnostics(input: { path: string }) {
+      async waitForDiagnostics(input: { path: string; generation: number }) {
         const normalizedPath = Filesystem.normalizePath(
           path.isAbsolute(input.path) ? input.path : path.resolve(Instance.directory, input.path),
         )
-        log.info("waiting for diagnostics", { path: normalizedPath })
+        log.info("waiting for diagnostics", { path: normalizedPath, generation: input.generation })
         let unsub: () => void
         let debounceTimer: ReturnType<typeof setTimeout> | undefined
         return await withTimeout(
           new Promise<void>((resolve) => {
             unsub = Bus.subscribe(Event.Diagnostics, (event) => {
-              if (event.properties.path === normalizedPath && event.properties.serverID === result.serverID) {
-                // Debounce to allow LSP to send follow-up diagnostics (e.g., semantic after syntax)
-                if (debounceTimer) clearTimeout(debounceTimer)
-                debounceTimer = setTimeout(() => {
-                  log.info("got diagnostics", { path: normalizedPath })
-                  unsub?.()
-                  resolve()
-                }, DIAGNOSTICS_DEBOUNCE_MS)
-              }
+              if (event.properties.path !== normalizedPath) return
+              if (event.properties.serverID !== result.serverID) return
+              if (event.properties.generation < input.generation) return
+              if (debounceTimer) clearTimeout(debounceTimer)
+              debounceTimer = setTimeout(() => {
+                log.info("got diagnostics", { path: normalizedPath, generation: input.generation })
+                unsub?.()
+                resolve()
+              }, DIAGNOSTICS_DEBOUNCE_MS)
             })
           }),
           10000,

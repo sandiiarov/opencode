@@ -283,13 +283,7 @@ export namespace LSP {
   export async function touchFile(input: string, waitForDiagnostics?: boolean) {
     log.info("touching file", { file: input })
     const clients = await getClients(input)
-    await Promise.all(
-      clients.map(async (client) => {
-        const wait = waitForDiagnostics ? client.waitForDiagnostics({ path: input }) : Promise.resolve()
-        await client.notify.open({ path: input })
-        return wait
-      }),
-    ).catch((err) => {
+    await Promise.all(clients.map((client) => client.notify.open({ path: input, waitForDiagnostics }))).catch((err) => {
       log.error("failed to touch file", { err, file: input })
     })
   }
