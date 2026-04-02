@@ -72,12 +72,11 @@ export namespace Truncate {
         }
 
         const out: string[] = []
-        let i = 0
         let bytes = 0
         let hitBytes = false
 
         if (direction === "head") {
-          for (i = 0; i < lines.length && i < maxLines; i++) {
+          for (let i = 0; i < lines.length && i < maxLines; i++) {
             const size = Buffer.byteLength(lines[i], "utf-8") + (i > 0 ? 1 : 0)
             if (bytes + size > maxBytes) {
               hitBytes = true
@@ -87,7 +86,7 @@ export namespace Truncate {
             bytes += size
           }
         } else {
-          for (i = lines.length - 1; i >= 0 && out.length < maxLines; i--) {
+          for (let i = lines.length - 1; i >= 0 && out.length < maxLines; i--) {
             const size = Buffer.byteLength(lines[i], "utf-8") + (out.length > 0 ? 1 : 0)
             if (bytes + size > maxBytes) {
               hitBytes = true

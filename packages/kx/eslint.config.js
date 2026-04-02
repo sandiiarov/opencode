@@ -18,7 +18,6 @@ export default [
       "require-yield": "off",
       "no-case-declarations": "off",
       "no-fallthrough": "off",
-      "no-useless-assignment": "off",
     },
   },
 ]
