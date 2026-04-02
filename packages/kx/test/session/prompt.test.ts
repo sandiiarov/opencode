@@ -1,12 +1,16 @@
 import path from "path"
-import { describe, expect, test } from "bun:test"
+import { describe, expect, spyOn, test } from "bun:test"
 import { NamedError } from "@kx/util/error"
 import { fileURLToPath } from "url"
 import { Instance } from "../../src/project/instance"
 import { ModelID, ProviderID } from "../../src/provider/schema"
+import { Provider } from "../../src/provider/provider"
 import { Session } from "../../src/session"
 import { Message } from "../../src/session/message"
 import { SessionPrompt } from "../../src/session/prompt"
+import { SessionProcessor } from "../../src/session/processor"
+import { MessageID, PartID } from "../../src/session/schema"
+import { SessionSummary } from "../../src/session/summary"
 import { SystemPrompt } from "../../src/session/system"
 import { Log } from "../../src/util/log"
 import { tmpdir } from "../fixture/fixture"
@@ -312,5 +316,112 @@ describe("session.prompt reread guidance", () => {
     expect(prompt).toContain("only after a later `edit` or `write` fails because ids are stale or missing")
     expect(prompt).not.toContain("Before editing, always read the relevant file contents or section")
     expect(prompt).not.toContain("Always read 2000 lines of code at a time")
+  })
+})
+
+describe("session.prompt tool loop", () => {
+  test("continues when the previous assistant stopped with tool parts", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      config: {
+        agent: {
+          build: {
+            model: "kx/kimi-k2.5-free",
+          },
+        },
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const session = await Session.create({})
+        const model = {
+          id: ModelID.make("kimi-k2.5-free"),
+          providerID: ProviderID.make("kx"),
+          api: { id: "kimi-k2.5-free", url: "https://example.com", npm: "@ai-sdk/openai" },
+          name: "Test model",
+          capabilities: {
+            temperature: true,
+            reasoning: false,
+            attachment: true,
+            toolcall: true,
+            input: { text: true, audio: false, image: true, video: false, pdf: true },
+            output: { text: true, audio: false, image: false, video: false, pdf: false },
+            interleaved: false,
+          },
+          cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
+          limit: { context: 200000, output: 8192 },
+          status: "active",
+          options: {},
+          headers: {},
+          release_date: "2026-01-01",
+        } as any
+        const getModel = spyOn(Provider, "getModel").mockResolvedValue(model)
+        const user = await SessionPrompt.prompt({
+          sessionID: session.id,
+          agent: "build",
+          noReply: true,
+          parts: [{ type: "text", text: "hello" }],
+        })
+        if (user.info.role !== "user") throw new Error("expected user message")
+
+        const assistant = await Session.updateMessage({
+          id: MessageID.ascending(),
+          parentID: user.info.id,
+          role: "assistant",
+          mode: "build",
+          agent: "build",
+          path: { cwd: tmp.path, root: tmp.path },
+          cost: 0,
+          tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+          modelID: user.info.model.modelID,
+          providerID: user.info.model.providerID,
+          finish: "stop",
+          time: { created: Date.now(), completed: Date.now() },
+          sessionID: session.id,
+        })
+        await Session.updatePart({
+          id: PartID.ascending(),
+          messageID: assistant.id,
+          sessionID: session.id,
+          type: "tool",
+          callID: "call-1",
+          tool: "bash",
+          state: {
+            status: "completed",
+            input: { command: "pwd" },
+            output: tmp.path,
+            title: "Bash",
+            metadata: {},
+            attachments: [],
+            time: { start: Date.now(), end: Date.now() },
+          },
+        })
+
+        const summarize = spyOn(SessionSummary, "summarize").mockResolvedValue(undefined as never)
+        const fakeCreate = ((input: Parameters<typeof SessionProcessor.create>[0]) => ({
+          message: input.assistantMessage,
+          partFromToolCall: () => undefined,
+          process: async () => {
+            input.assistantMessage.finish = "stop"
+            return "stop" as const
+          },
+        })) as any
+        const create = spyOn(SessionProcessor, "create").mockImplementation(fakeCreate)
+
+        try {
+          const result = await SessionPrompt.loop({ sessionID: session.id })
+          expect(getModel).toHaveBeenCalled()
+          expect(create).toHaveBeenCalledTimes(1)
+          expect(result.info.role).toBe("assistant")
+          expect(result.info.id).not.toBe(assistant.id)
+        } finally {
+          create.mockRestore()
+          summarize.mockRestore()
+          getModel.mockRestore()
+        }
+      },
+    })
   })
 })

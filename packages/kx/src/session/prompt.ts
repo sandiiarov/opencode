@@ -311,9 +311,14 @@ export namespace SessionPrompt {
       }
 
       if (!lastUser) throw new Error("No user message found in stream. This should never happen.")
+      const lastAssistantMsg = msgs.findLast(
+        (msg) => msg.info.role === "assistant" && msg.info.id === lastAssistant?.id,
+      )
+      const hasToolCalls = lastAssistantMsg?.parts.some((part) => part.type === "tool") ?? false
       if (
         lastAssistant?.finish &&
         !["tool-calls", "unknown"].includes(lastAssistant.finish) &&
+        !hasToolCalls &&
         lastUser.id < lastAssistant.id
       ) {
         log.info("exiting loop", { sessionID })

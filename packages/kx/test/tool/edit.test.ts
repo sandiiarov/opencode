@@ -88,6 +88,52 @@ describe("tool.edit", () => {
     })
   })
 
+  test("appends a blank line next to an existing blank line", async () => {
+    await using tmp = await tmpdir()
+    const file = path.join(tmp.path, "file.txt")
+    await fs.writeFile(file, "one\n\ntwo\n", "utf-8")
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        await FileTime.read(ctx.sessionID, file)
+        const edit = await EditTool.init()
+        await edit.execute(
+          {
+            filePath: file,
+            edits: [{ op: "append", pos: await ref(file, 1), lines: [""] }],
+          },
+          ctx,
+        )
+
+        expect(await fs.readFile(file, "utf-8")).toBe("one\n\n\ntwo\n")
+      },
+    })
+  })
+
+  test("prepends a blank line next to an existing blank line", async () => {
+    await using tmp = await tmpdir()
+    const file = path.join(tmp.path, "file.txt")
+    await fs.writeFile(file, "one\n\ntwo\n", "utf-8")
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        await FileTime.read(ctx.sessionID, file)
+        const edit = await EditTool.init()
+        await edit.execute(
+          {
+            filePath: file,
+            edits: [{ op: "prepend", pos: await ref(file, 3), lines: [""] }],
+          },
+          ctx,
+        )
+
+        expect(await fs.readFile(file, "utf-8")).toBe("one\n\n\ntwo\n")
+      },
+    })
+  })
+
   test("fails when file was not read first", async () => {
     await using tmp = await tmpdir()
     const file = path.join(tmp.path, "file.txt")

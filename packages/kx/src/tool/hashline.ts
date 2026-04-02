@@ -105,6 +105,14 @@ function clean(lines: string | string[] | null) {
   })
 }
 
+function trimFirst(anchor: string, list: string[]) {
+  return list.length > 1 && canTrimFirst(anchor, list) ? list.slice(1) : list
+}
+
+function trimLast(anchor: string, list: string[]) {
+  return list.length > 1 && canTrimLast(anchor, list) ? list.slice(0, -1) : list
+}
+
 function normalize(line: string) {
   const text = line.replace(/\s+/g, "")
   if (/^[\]})](?:[,;])?$/.test(text)) return text.replace(/[;,]$/, "")
@@ -228,8 +236,8 @@ export function apply(file: string, content: string, edits: Edit[]) {
       const line = edit.line!
       let add = clean(edit.lines)
       if (!add.length) throw new Error("append requires non-empty lines")
-      if (canTrimFirst(lines[line - 1] ?? "", add)) add = add.slice(1)
-      if (canTrimLast(lines[line] ?? "", add)) add = add.slice(0, -1)
+      add = trimFirst(lines[line - 1] ?? "", add)
+      add = trimLast(lines[line] ?? "", add)
       if (!add.length) throw new Error("append requires non-empty lines")
       lines.splice(line, 0, ...add)
       continue
@@ -238,8 +246,8 @@ export function apply(file: string, content: string, edits: Edit[]) {
       const line = edit.line!
       let add = clean(edit.lines)
       if (!add.length) throw new Error("prepend requires non-empty lines")
-      if (canTrimFirst(lines[line - 2] ?? "", add)) add = add.slice(1)
-      if (canTrimLast(lines[line - 1] ?? "", add)) add = add.slice(0, -1)
+      add = trimFirst(lines[line - 2] ?? "", add)
+      add = trimLast(lines[line - 1] ?? "", add)
       if (!add.length) throw new Error("prepend requires non-empty lines")
       lines.splice(line - 1, 0, ...add)
       continue
