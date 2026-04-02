@@ -1,20 +1,21 @@
 import type {
-  Message,
   Agent,
-  Provider,
-  Session,
-  Part,
-  Config,
-  Todo,
   Command,
-  PermissionRequest,
-  QuestionRequest,
-  LspStatus,
+  Config,
   FormatterStatus,
-  SessionStatus,
-  ProviderListResponse,
+  LspStatus,
+  Message,
+  Part,
+  PermissionRequest,
+  Provider,
   ProviderAuthMethod,
+  ProviderListResponse,
+  QuestionRequest,
+  Session,
+  SessionStatus,
+  Todo,
   VcsInfo,
+  Workspace,
 } from "@kx/sdk/v2"
 import { createStore, produce, reconcile } from "solid-js/store"
 import { useSDK } from "@tui/context/sdk"
@@ -26,7 +27,6 @@ import { useArgs } from "./args"
 import { batch, onMount } from "solid-js"
 import { Log } from "@/util/log"
 import type { Path } from "@kx/sdk"
-import type { Workspace } from "@kx/sdk/v2"
 
 export const { use: useSync, provider: SyncProvider } = createSimpleContext({
   name: "Sync",
