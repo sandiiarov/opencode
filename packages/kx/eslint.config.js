@@ -14,7 +14,6 @@ export default [
       "@typescript-eslint/no-require-imports": "off",
       "@typescript-eslint/no-unused-expressions": "off",
       "@typescript-eslint/no-unused-vars": "off",
-      "import/first": "off",
       "import/no-duplicates": "off",
       "prefer-const": "off",
       "require-yield": "off",

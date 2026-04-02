@@ -9,6 +9,7 @@ import { Flag } from "@/flag/flag"
 import { DialogProvider, useDialog } from "@tui/ui/dialog"
 import { DialogProvider as DialogProviderList } from "@tui/component/dialog-provider"
 import { SDKProvider, useSDK } from "@tui/context/sdk"
+import type { EventSource } from "./context/sdk"
 import { SyncProvider, useSync } from "@tui/context/sync"
 import { LocalProvider, useLocal } from "@tui/context/local"
 import { DialogModel, useConnected } from "@tui/component/dialog-model"
@@ -38,6 +39,7 @@ import { writeHeapSnapshot } from "v8"
 import { PromptRefProvider, usePromptRef } from "./context/prompt"
 import { TuiConfigProvider } from "./context/tui-config"
 import { TuiConfig } from "@/config/tui"
+import { Installation } from "@/installation"
 
 async function getTerminalBackgroundColor(): Promise<"dark" | "light"> {
   // can't set raw mode if not a TTY
@@ -107,10 +109,6 @@ async function getTerminalBackgroundColor(): Promise<"dark" | "light"> {
     }, 1000)
   })
 }
-
-import type { EventSource } from "./context/sdk"
-import { Installation } from "@/installation"
-
 export function tui(input: {
   url: string
   args: Args
