@@ -23,7 +23,6 @@ export default [
       "prefer-const": "off",
       "preserve-caught-error": "off",
       "require-yield": "off",
-      "@typescript-eslint/no-this-alias": "off",
       "no-case-declarations": "off",
       "no-constant-condition": "off",
       "no-fallthrough": "off",

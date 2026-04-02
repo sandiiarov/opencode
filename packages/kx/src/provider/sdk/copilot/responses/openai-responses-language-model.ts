@@ -790,7 +790,7 @@ export class OpenAIResponsesLanguageModel implements LanguageModelV2 {
       fetch: this.config.fetch,
     })
 
-    const self = this
+    const generate = this.config.generateId
 
     let finishReason: LanguageModelV2FinishReason = "unknown"
     const usage: LanguageModelV2Usage = {
@@ -1261,7 +1261,7 @@ export class OpenAIResponsesLanguageModel implements LanguageModelV2 {
                 controller.enqueue({
                   type: "source",
                   sourceType: "url",
-                  id: self.config.generateId?.() ?? generateId(),
+                  id: generate?.() ?? generateId(),
                   url: value.annotation.url,
                   title: value.annotation.title,
                 })
@@ -1269,7 +1269,7 @@ export class OpenAIResponsesLanguageModel implements LanguageModelV2 {
                 controller.enqueue({
                   type: "source",
                   sourceType: "document",
-                  id: self.config.generateId?.() ?? generateId(),
+                  id: generate?.() ?? generateId(),
                   mediaType: "text/plain",
                   title: value.annotation.quote ?? value.annotation.filename ?? "Document",
                   filename: value.annotation.filename ?? value.annotation.file_id,
