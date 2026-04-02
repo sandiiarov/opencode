@@ -99,8 +99,8 @@
 - [x] `1de06452d` fix(plugin): properly resolve entrypoints without leading dot (skip: local fork does not use the upstream entrypoint resolver stack)
 - [x] `0b1018f6d` plugin installs should preserve jsonc comments (skip: local fork has no upstream plugin install/config patch pipeline)
 - [x] `1fcfb69bf` feat: add new provider plugin hook for resolving models and sync models from github models endpoint (partially integrated: added provider hook API and Copilot model sync path)
-- [ ] `6274b0677` older base context: tui plugins
-- [ ] `f3997d808` older base context: Single target plugin entrypoints
+- [x] `6274b0677` older base context: tui plugins (skip: massive upstream TUI plugin/runtime/config system addition; `my` has no `packages/kx/src/cli/cmd/tui/plugin/*`, no `tui.json` plugin pipeline in `packages/kx/src/config/tui.ts`, and server-side plugins still load directly from `packages/kx/src/plugin/index.ts`, so porting this would be new product surface rather than a fork-relevant fix)
+- [x] `f3997d808` older base context: Single target plugin entrypoints (skip: follow-up to upstream v1 plugin entrypoint split across server/TUI modules; `my` has no TUI plugin package surface in `packages/plugin/src/tui.ts`, no TUI runtime loader, and local server plugins still load via legacy export enumeration in `packages/kx/src/plugin/index.ts`)
 
 ### Expected conflict areas
 
@@ -112,8 +112,8 @@
 
 ### Review together
 
-- [ ] `e4ff1ea77` refactor(bash): use Effect ChildProcess for bash tool execution
-- [ ] `a9c85b7c2` refactor(shell): use Effect ChildProcess for shell command execution
+- [x] `e4ff1ea77` refactor(bash): use Effect ChildProcess for bash tool execution (integrated: switched `packages/kx/src/tool/bash.ts` to `ChildProcessSpawner` execution, preserved streamed metadata/output on abort and timeout, added lazy runtime helpers in `packages/kx/src/effect/cross-spawn-spawner.ts`, and added regression coverage in `packages/kx/test/tool/bash.test.ts`)
+- [x] `a9c85b7c2` refactor(shell): use Effect ChildProcess for shell command execution (integrated: switched `packages/kx/src/session/prompt.ts` shell execution to `ChildProcessSpawner`, kept streaming metadata updates and abort handling, fixed login-shell invocation ordering for bash/zsh, and added shell regression coverage in `packages/kx/test/session/prompt.test.ts`)
 - [ ] `b23437008` feat(windows): add first-class pwsh/powershell support
 - [ ] `15a8c22a2` tweak: adjust bash tool description to increase cache hit rates between projects
 

@@ -424,4 +424,78 @@ describe("session.prompt tool loop", () => {
       },
     })
   })
+
+  describe("session.prompt shell", () => {
+    test("captures stdout and stderr in shell output", async () => {
+      await using tmp = await tmpdir({
+        git: true,
+        config: {
+          agent: {
+            build: {
+              model: "openai/gpt-5.2",
+            },
+          },
+        },
+      })
+
+      await Instance.provide({
+        directory: tmp.path,
+        fn: async () => {
+          const session = await Session.create({})
+          const result = await SessionPrompt.shell({
+            sessionID: session.id,
+            agent: "build",
+            command: "printf out && printf err >&2",
+          })
+
+          expect(result.info.role).toBe("assistant")
+          const tool = result.parts.find((part) => part.type === "tool")
+          expect(tool?.type).toBe("tool")
+          if (!tool || tool.type !== "tool" || tool.state.status !== "completed") return
+
+          expect(tool.state.output).toContain("out")
+          expect(tool.state.output).toContain("err")
+          expect(tool.state.metadata.output).toContain("out")
+          expect(tool.state.metadata.output).toContain("err")
+
+          await Session.remove(session.id)
+        },
+      })
+    })
+
+    test("runs shell command from the project directory", async () => {
+      await using tmp = await tmpdir({
+        git: true,
+        config: {
+          agent: {
+            build: {
+              model: "openai/gpt-5.2",
+            },
+          },
+        },
+      })
+      await Bun.write(path.join(tmp.path, "README.md"), "# test\n")
+
+      await Instance.provide({
+        directory: tmp.path,
+        fn: async () => {
+          const session = await Session.create({})
+          const result = await SessionPrompt.shell({
+            sessionID: session.id,
+            agent: "build",
+            command: "pwd && command ls",
+          })
+
+          const tool = result.parts.find((part) => part.type === "tool")
+          expect(tool?.type).toBe("tool")
+          if (!tool || tool.type !== "tool" || tool.state.status !== "completed") return
+
+          expect(tool.state.output).toContain(tmp.path)
+          expect(tool.state.output).toContain("README.md")
+
+          await Session.remove(session.id)
+        },
+      })
+    })
+  })
 })

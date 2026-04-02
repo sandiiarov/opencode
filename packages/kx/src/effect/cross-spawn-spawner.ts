@@ -1,5 +1,5 @@
 import type * as Arr from "effect/Array"
-import { NodeSink, NodeStream } from "@effect/platform-node"
+import { NodeFileSystem, NodePath, NodeSink, NodeStream } from "@effect/platform-node"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -23,6 +23,9 @@ import {
 import * as NodeChildProcess from "node:child_process"
 import { PassThrough } from "node:stream"
 import launch from "cross-spawn"
+import { ManagedRuntime } from "effect"
+import { lazy } from "@/util/lazy"
+import { memoMap } from "@/effect/run-service"
 
 const toError = (err: unknown): Error => (err instanceof globalThis.Error ? err : new globalThis.Error(String(err)))
 
@@ -474,3 +477,8 @@ export const layer: Layer.Layer<ChildProcessSpawner, never, FileSystem.FileSyste
   ChildProcessSpawner,
   make,
 )
+export const defaultLayer = layer.pipe(Layer.provide(NodeFileSystem.layer), Layer.provide(NodePath.layer))
+
+const rt = lazy(() => ManagedRuntime.make(defaultLayer, { memoMap }))
+export const runPromise = rt().runPromise.bind(rt())
+export const runPromiseExit = rt().runPromiseExit.bind(rt())

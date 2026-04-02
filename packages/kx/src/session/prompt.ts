@@ -30,7 +30,9 @@ import { FileTime } from "../file/time"
 import { NotFoundError } from "@/storage/db"
 import { Flag } from "../flag/flag"
 import { ulid } from "ulid"
-import { spawn } from "child_process"
+import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
+import { Cause, Effect, Exit, Stream } from "effect"
+import * as CrossSpawnSpawner from "@/effect/cross-spawn-spawner"
 import { Command } from "../command"
 import { pathToFileURL, fileURLToPath } from "url"
 import { ConfigMarkdown } from "../config/markdown"
@@ -1492,41 +1494,41 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       },
       zsh: {
         args: [
-          "-c",
           "-l",
+          "-c",
           `
+            __kx_cwd=$PWD
             [[ -f ~/.zshenv ]] && source ~/.zshenv >/dev/null 2>&1 || true
             [[ -f "\${ZDOTDIR:-$HOME}/.zshrc" ]] && source "\${ZDOTDIR:-$HOME}/.zshrc" >/dev/null 2>&1 || true
+            cd "$__kx_cwd"
             eval ${JSON.stringify(input.command)}
           `,
         ],
       },
       bash: {
         args: [
-          "-c",
           "-l",
+          "-c",
           `
+            __kx_cwd=$PWD
             shopt -s expand_aliases
             [[ -f ~/.bashrc ]] && source ~/.bashrc >/dev/null 2>&1 || true
+            cd "$__kx_cwd"
             eval ${JSON.stringify(input.command)}
           `,
         ],
       },
-      // Windows cmd
       cmd: {
         args: ["/c", input.command],
       },
-      // Windows PowerShell
       powershell: {
         args: ["-NoProfile", "-Command", input.command],
       },
       pwsh: {
         args: ["-NoProfile", "-Command", input.command],
       },
-      // Fallback: any shell that doesn't match those above
-      //  - No -l, for max compatibility
       "": {
-        args: ["-c", `${input.command}`],
+        args: ["-c", input.command],
       },
     }
 
@@ -1539,66 +1541,65 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       { cwd, sessionID: input.sessionID, callID: part.callID },
       { env: {} },
     )
-    const proc = spawn(shell, args, {
+    const cmd = ChildProcess.make(shell, args, {
       cwd,
-      detached: process.platform !== "win32",
-      windowsHide: process.platform === "win32",
-      stdio: ["ignore", "pipe", "pipe"],
+      extendEnv: true,
       env: {
-        ...process.env,
         ...shellEnv.env,
         TERM: "dumb",
       },
+      stdin: "ignore",
+      forceKillAfter: "3 seconds",
     })
 
     let output = ""
-
-    proc.stdout?.on("data", (chunk) => {
-      output += chunk.toString()
-      if (part.state.status === "running") {
-        part.state.metadata = {
-          output: output,
-          description: "",
-        }
-        Session.updatePart(part)
-      }
-    })
-
-    proc.stderr?.on("data", (chunk) => {
-      output += chunk.toString()
-      if (part.state.status === "running") {
-        part.state.metadata = {
-          output: output,
-          description: "",
-        }
-        Session.updatePart(part)
-      }
-    })
-
     let aborted = false
-    let exited = false
 
-    const kill = () => Shell.killTree(proc, { exited: () => exited })
+    const exit = await CrossSpawnSpawner.runPromiseExit(
+      Effect.gen(function* () {
+        const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+        const handle = yield* spawner.spawn(cmd)
 
-    if (abort.aborted) {
-      aborted = true
-      await kill()
+        yield* Effect.forkScoped(
+          Stream.runForEach(Stream.decodeText(handle.all), (chunk) =>
+            Effect.sync(() => {
+              output += chunk
+              if (part.state.status === "running") {
+                part.state.metadata = {
+                  output,
+                  description: "",
+                }
+                void Session.updatePart(part)
+              }
+            }),
+          ),
+        )
+
+        const stop = Effect.callback<void>((resume) => {
+          if (abort.aborted) return resume(Effect.void)
+          const handler = () => resume(Effect.void)
+          abort.addEventListener("abort", handler, { once: true })
+          return Effect.sync(() => abort.removeEventListener("abort", handler))
+        })
+
+        const result: { kind: "exit"; code: number } | { kind: "abort"; code: null } = yield* Effect.raceAll([
+          handle.exitCode.pipe(Effect.map((code) => ({ kind: "exit" as const, code }))),
+          stop.pipe(Effect.map(() => ({ kind: "abort" as const, code: null }))),
+        ])
+
+        if (result.kind === "abort") {
+          aborted = true
+          yield* handle.kill({ forceKillAfter: "3 seconds" }).pipe(Effect.orDie)
+          return null
+        }
+
+        return result.code
+      }).pipe(Effect.scoped, Effect.orDie),
+    )
+
+    if (Exit.isFailure(exit) && !Cause.hasInterruptsOnly(exit.cause)) {
+      throw Cause.squash(exit.cause)
     }
-
-    const abortHandler = () => {
-      aborted = true
-      void kill()
-    }
-
-    abort.addEventListener("abort", abortHandler, { once: true })
-
-    await new Promise<void>((resolve) => {
-      proc.on("close", () => {
-        exited = true
-        abort.removeEventListener("abort", abortHandler)
-        resolve()
-      })
-    })
 
     if (aborted) {
       output += "\n\n" + ["<metadata>", "User aborted the command", "</metadata>"].join("\n")
