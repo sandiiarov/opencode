@@ -3,7 +3,7 @@ import { Effect, Layer, Option, Schema, ServiceMap } from "effect"
 
 import { Database } from "@/storage/db"
 import { AccountStateTable, AccountTable } from "./account.sql"
-import type { AccessToken, AccountID, OrgID, RefreshToken } from "./schema";
+import type { AccessToken, AccountID, OrgID, RefreshToken } from "./schema"
 import { AccountRepoError, Info } from "./schema"
 
 export type AccountRow = (typeof AccountTable)["$inferSelect"]
@@ -40,7 +40,7 @@ export namespace AccountRepo {
 export class AccountRepo extends ServiceMap.Service<AccountRepo, AccountRepo.Service>()("@kx/AccountRepo") {
   static readonly layer: Layer.Layer<AccountRepo> = Layer.effect(
     AccountRepo,
-    Effect.gen(function* () {
+    Effect.sync(() => {
       const decode = Schema.decodeUnknownSync(Info)
 
       const query = <A>(f: (db: DbClient) => A) =>

@@ -52,7 +52,7 @@ export namespace Auth {
 
   export const layer = Layer.effect(
     Service,
-    Effect.gen(function* () {
+    Effect.sync(() => {
       const decode = Schema.decodeUnknownOption(Info)
 
       const all = Effect.fn("Auth.all")(() =>

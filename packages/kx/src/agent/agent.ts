@@ -278,9 +278,8 @@ export namespace Agent {
           }
 
           const get = Effect.fnUntraced(function* (agent: string) {
-            return agents[agent]
+            return yield* Effect.succeed(agents[agent])
           })
-
           const list = Effect.fnUntraced(function* () {
             const cfg = yield* config()
             return pipe(
