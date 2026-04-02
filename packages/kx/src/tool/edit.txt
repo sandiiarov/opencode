@@ -1,7 +1,7 @@
 Performs additive line-id edits in files.
 
 Usage:
-- You must have fresh line ids for the file before editing it. The latest `read`, `grep`, `edit`, or `write` result is valid input. NEVER call `read` on a file immediately after your own `edit` or `write` of that same file just to verify the change, inspect the result, or get fresh ids. The returned `Updated lines` ids are already the fresh source of truth for follow-up edits in that area. Re-read only when ids are missing, stale, or you need more context.
+- You must have fresh line ids for the file before editing it. The latest `read`, `grep`, `edit`, or `write` result is valid input. NEVER call `read` on the same file after your own `edit` or `write` just to verify the change, inspect the file, or refresh ids. Treat the returned `Updated lines` ids as authoritative and keep editing with them without rereading. Fresh ids from `grep` are valid too; if `grep` already shows the target line and enough nearby context, edit directly instead of reading that file first. Re-read that same file only after a later `edit` or `write` fails because ids are stale or missing, or if the user explicitly asks you to inspect that file again.
 - `read` and `grep` display lines as `id|line text`. Use only the plain id, like `ryh9`, in `pos` and `end`.
 - Keep edits additive and narrow. Prefer a few small line-id operations over rewriting unrelated surrounding code.
 - Each edit call applies against the original file state. Do not renumber later edits in the same call.

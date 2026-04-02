@@ -11,6 +11,7 @@ import path from "path"
 import { assertExternalDirectory } from "./external-directory"
 import { formatLine } from "./hashline"
 import { FileLine } from "../file/line"
+import { FileTime } from "../file/time"
 
 const MAX_LINE_LENGTH = 2000
 
@@ -124,18 +125,11 @@ export const GrepTool = Tool.define("grep", {
     const limit = 100
     const truncated = matches.length > limit
     const finalMatches = truncated ? matches.slice(0, limit) : matches
-
-    if (finalMatches.length === 0) {
-      return {
-        title: params.pattern,
-        metadata: { matches: 0, truncated: false },
-        output: "No files found",
-      }
-    }
+    const seen = new Set(finalMatches.map((match) => match.path))
+    await Promise.all([...seen].map((file) => FileTime.read(ctx.sessionID, file)))
 
     const totalMatches = matches.length
     const outputLines = [`Found ${totalMatches} matches${truncated ? ` (showing first ${limit})` : ""}`]
-
     const cache = new Map<string, ReturnType<typeof FileLine.sync>>()
 
     let currentFile = ""

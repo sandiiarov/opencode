@@ -8,7 +8,7 @@ Usage:
 - Use the grep tool to find specific content in large files or files with long lines.
 - If you are unsure of the correct file path, use the glob tool to look up filenames by glob pattern.
 - Text file contents are returned as `id|line content`, where `id` is the stable line id, `line` is the 1-based line number, and `content` is the current line text. Use only the id before the first `|` when calling `edit`. For directories, entries are returned one per line (without line numbers) with a trailing `/` for subdirectories.
-- NEVER call `read` on a file immediately after your own `edit` or `write` of that same file just to verify the change, inspect the result, or get fresh ids. The returned `Updated lines` ids are already the fresh source of truth for follow-up edits in that area. Re-read only if you need additional context not covered by those returned lines.
+- NEVER call `read` on the same file after your own `edit` or `write` just to verify the change, inspect the file, or refresh ids. Treat the returned `Updated lines` ids as authoritative and keep editing with them without rereading. Re-read that same file only after a later `edit` or `write` fails because ids are stale or missing, or if the user explicitly asks you to inspect that file again.
 - Any line longer than 2000 characters is truncated.
 - Call this tool in parallel when you know there are multiple files you want to read.
 - Avoid tiny repeated slices (30 line chunks). If you need more context, read a larger window.

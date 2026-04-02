@@ -3,7 +3,7 @@
 - Supports full regex syntax (eg. "log.*Error", "function\s+\w+", etc.)
 - Filter files by pattern with the include parameter (eg. "*.js", "*.{ts,tsx}")
 - Returns file paths and line numbers with at least one match sorted by modification time
-- Matches use the same `id|line text` format as `read`. Use only the plain line id before the first `|` when passing a match to `edit`, so you can often go directly from `grep` to `edit` without another read.
+- Matches use the same `id|line text` format as `read`. Use only the plain line id before the first `|` when passing a match to `edit`, so you can often go directly from `grep` to `edit` without another read. Grep also records freshness for the matched files it returns, so follow-up edits can reuse those ids immediately.
 - Use this tool when you need to find files containing specific patterns
 - If you need to identify/count the number of matches within files, use the Bash tool with `rg` (ripgrep) directly. Do NOT use `grep`.
 - When you are doing an open-ended search that may require multiple rounds of globbing and grepping, use the Task tool instead

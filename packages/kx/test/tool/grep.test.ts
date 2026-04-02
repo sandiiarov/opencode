@@ -29,6 +29,15 @@ function lineRef(output: string, line: number) {
   return hit.replace(/^>>>\s*/, "").split("|")[0]
 }
 
+function refText(output: string, text: string) {
+  const hit = output
+    .split("\n")
+    .map((item) => item.trimStart())
+    .find((item) => /^(?:>>>\s*)?[a-z0-9]{4}\|/i.test(item) && item.includes(text))
+  if (!hit) throw new Error(`Missing hashline ref for ${text}`)
+  return hit.replace(/^>>>\s*/, "").split("|")[0]
+}
+
 describe("tool.grep", () => {
   test("basic search", async () => {
     await Instance.provide({
@@ -128,8 +137,6 @@ describe("tool.grep", () => {
         const second = lineRef(grepResult.output, 2)
         const tail = lineRef(grepResult.output, 3)
 
-        const { FileTime } = await import("../../src/file/time")
-        await FileTime.read(ctx.sessionID, file)
         const edit = await EditTool.init()
         await edit.execute(
           {
@@ -159,8 +166,44 @@ describe("tool.grep", () => {
       },
     })
   })
-})
 
+  test("marks every matched file as fresh for follow-up edits", async () => {
+    await using tmp = await tmpdir({
+      init: async (dir) => {
+        await Promise.all([
+          Bun.write(path.join(dir, "a.txt"), "keep\ntodo a\n"),
+          Bun.write(path.join(dir, "b.txt"), "keep\ntodo b\n"),
+        ])
+      },
+    })
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const grep = await GrepTool.init()
+        const edit = await EditTool.init()
+        const result = await grep.execute({ pattern: "todo", path: tmp.path }, ctx)
+
+        await edit.execute(
+          {
+            filePath: path.join(tmp.path, "a.txt"),
+            edits: [{ op: "replace", pos: refText(result.output, "todo a"), lines: ["done a"] }],
+          },
+          ctx,
+        )
+        await edit.execute(
+          {
+            filePath: path.join(tmp.path, "b.txt"),
+            edits: [{ op: "replace", pos: refText(result.output, "todo b"), lines: ["done b"] }],
+          },
+          ctx,
+        )
+
+        expect(await Bun.file(path.join(tmp.path, "a.txt")).text()).toBe("keep\ndone a\n")
+        expect(await Bun.file(path.join(tmp.path, "b.txt")).text()).toBe("keep\ndone b\n")
+      },
+    })
+  })
+})
 describe("CRLF regex handling", () => {
   test("regex correctly splits Unix line endings", () => {
     const unixOutput = "file1.txt|1|content1\nfile2.txt|2|content2\nfile3.txt|3|content3"

@@ -289,19 +289,27 @@ describe("session.agent-resolution", () => {
 })
 
 describe("session.prompt reread guidance", () => {
-  test("gpt-5.4 provider prompt forbids immediate same-file rereads after edit", () => {
+  test("gpt-5.4 provider prompt forbids same-file rereads until stale-id failure", () => {
     const model = { api: { id: "gpt-5.4" } } as Parameters<typeof SystemPrompt.provider>[0]
     const prompt = SystemPrompt.provider(model).join("\n")
 
-    expect(prompt).toContain("NEVER call `read` on a file immediately after your own `edit` or `write`")
+    expect(prompt).toContain("NEVER call `read` on the same file after your own `edit` or `write`")
+    expect(prompt).toContain("Treat the `Updated lines` ids as authoritative")
+    expect(prompt).toContain("Fresh ids from `grep` are valid too")
+    expect(prompt).toContain("edit directly instead of reading that file first")
+    expect(prompt).toContain("only after a later `edit` or `write` fails because ids are stale or missing")
     expect(prompt).not.toContain("Always read 2000 lines of code at a time")
   })
 
-  test("copilot gpt-5 prompt does not require blanket rereads before editing", async () => {
+  test("copilot gpt-5 prompt forbids same-file rereads until stale-id failure", async () => {
     const file = path.join(process.cwd(), "src/session/prompt/copilot-gpt-5.txt")
     const prompt = await Bun.file(file).text()
 
-    expect(prompt).toContain("NEVER call `read` on a file immediately after your own `edit` or `write`")
+    expect(prompt).toContain("NEVER call `read` on the same file after your own `edit` or `write`")
+    expect(prompt).toContain("Treat the `Updated lines` ids as authoritative")
+    expect(prompt).toContain("Fresh ids from `grep` are valid too")
+    expect(prompt).toContain("edit directly instead of reading that file first")
+    expect(prompt).toContain("only after a later `edit` or `write` fails because ids are stale or missing")
     expect(prompt).not.toContain("Before editing, always read the relevant file contents or section")
     expect(prompt).not.toContain("Always read 2000 lines of code at a time")
   })

@@ -276,7 +276,6 @@ describe("tool.edit", () => {
       fn: async () => {
         const grep = await GrepTool.init()
         const result = await grep.execute({ pattern: "two", path: tmp.path }, ctx)
-        await FileTime.read(ctx.sessionID, file)
         const edit = await EditTool.init()
 
         await edit.execute(

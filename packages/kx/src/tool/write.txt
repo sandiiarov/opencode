@@ -3,7 +3,7 @@ Writes a file to the local filesystem.
 Usage:
 - This tool will overwrite the existing file if there is one at the provided path.
 - For existing files, read the file first so freshness checks can detect outside changes.
-- Successful writes return `Updated lines` in `id|line text` form. Reuse only the plain ids for the next `edit`. NEVER call `read` on that same file immediately after your own `write` just to verify the change, inspect the result, or get fresh ids. The returned `Updated lines` ids are already the fresh source of truth for follow-up edits in that area. Re-read only if you need additional context not covered by those returned lines.
+- Successful writes return `Updated lines` in `id|line text` form. Reuse only the plain ids for the next `edit`. NEVER call `read` on that same file after your own `write` just to verify the change, inspect the file, or refresh ids. Treat the returned `Updated lines` ids as authoritative and keep editing with them without rereading. Re-read that same file only after a later `edit` or `write` fails because ids are stale or missing, or if the user explicitly asks you to inspect that file again.
 - ALWAYS prefer editing existing files in the codebase. NEVER write new files unless explicitly required.
 - NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
 - Only use emojis if the user explicitly requests it. Avoid writing emojis to files unless asked.
