@@ -23,6 +23,7 @@ export namespace Rpc {
   }) {
     const pending = new Map<number, (result: any) => void>()
     const listeners = new Map<string, Set<(data: any) => void>>()
+    const post = target.postMessage.bind(target)
     let id = 0
     target.onmessage = async (evt) => {
       const parsed = JSON.parse(evt.data)
@@ -47,7 +48,7 @@ export namespace Rpc {
         const requestId = id++
         return new Promise((resolve) => {
           pending.set(requestId, resolve)
-          target.postMessage(JSON.stringify({ type: "rpc.request", method, input, id: requestId }))
+          post(JSON.stringify({ type: "rpc.request", method, input, id: requestId }))
         })
       },
       on<Data>(event: string, handler: (data: Data) => void) {

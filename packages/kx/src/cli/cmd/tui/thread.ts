@@ -3,6 +3,7 @@ import { tui } from "./app"
 import { Rpc } from "@/util/rpc"
 import { type rpc } from "./worker"
 import path from "path"
+import { promises as fs } from "node:fs"
 import { fileURLToPath } from "url"
 import { UI } from "@/cli/ui"
 import { Log } from "@/util/log"
@@ -51,9 +52,49 @@ function createEventSource(client: RpcClient): EventSource {
 
 async function target() {
   if (typeof KX_WORKER_PATH !== "undefined") return KX_WORKER_PATH
-  const dist = new URL("./cli/cmd/tui/worker.js", import.meta.url)
+  const dist = new URL("./worker.js", import.meta.url)
   if (await Filesystem.exists(fileURLToPath(dist))) return dist
-  return new URL("./worker.ts", import.meta.url)
+  const src = fileURLToPath(new URL("./worker.ts", import.meta.url))
+  const root = fileURLToPath(new URL("../../../../", import.meta.url))
+  const tsconfig = path.join(root, "tsconfig.json")
+  const migrationDir = path.join(root, "migration")
+  const names = (await fs.readdir(migrationDir, { withFileTypes: true }))
+    .filter((entry) => entry.isDirectory() && /^\d{14}/.test(entry.name))
+    .map((entry) => entry.name)
+    .sort()
+  const migrations = await Promise.all(
+    names.map(async (name) => {
+      const sql = await Bun.file(path.join(migrationDir, name, "migration.sql")).text()
+      const match = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/.exec(name)
+      const timestamp = match
+        ? Date.UTC(
+            Number(match[1]),
+            Number(match[2]) - 1,
+            Number(match[3]),
+            Number(match[4]),
+            Number(match[5]),
+            Number(match[6]),
+          )
+        : 0
+      return { sql, timestamp, name }
+    }),
+  )
+  const outdir = path.join(process.env.TMPDIR ?? "/tmp", "kx-worker")
+  const result = await Bun.build({
+    entrypoints: [src],
+    outdir,
+    format: "esm",
+    target: "bun",
+    conditions: ["browser"],
+    tsconfig,
+    define: {
+      KX_MIGRATIONS: JSON.stringify(migrations),
+    },
+    throw: false,
+  })
+  const output = result.outputs.find((item) => item.kind === "entry-point")
+  if (result.success && output?.path) return output.path
+  throw new Error(result.logs.map((log) => log.message).join("\n") || "failed to build tui worker")
 }
 
 async function input(value?: string) {
@@ -135,7 +176,13 @@ export const TuiThreadCommand = cmd({
         ),
       })
       worker.onerror = (e) => {
-        Log.Default.error(e)
+        Log.Default.error("worker error", {
+          message: e.message,
+          filename: e.filename,
+          lineno: e.lineno,
+          colno: e.colno,
+          error: e.error instanceof Error ? e.error.message : e.error,
+        })
       }
 
       const client = Rpc.client<typeof rpc>(worker)
