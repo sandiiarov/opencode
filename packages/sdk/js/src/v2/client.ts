@@ -8,7 +8,6 @@ export { type Config as KxClientConfig, KxClient }
 export function createKxClient(config?: Config & { directory?: string; experimental_workspaceID?: string }) {
   if (!config?.fetch) {
     const customFetch: any = (req: any) => {
-      // @ts-ignore
       req.timeout = false
       return fetch(req)
     }

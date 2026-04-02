@@ -1,6 +1,6 @@
 import { createRequire } from "module"
 import { Cause, Effect, Layer, Scope, ServiceMap } from "effect"
-// @ts-ignore
+// @ts-expect-error Parcel watcher wrapper ships without compatible local typings
 import { createWrapper } from "@parcel/watcher/wrapper"
 import type * as ParcelWatcher from "@parcel/watcher"
 import { readdir } from "fs/promises"

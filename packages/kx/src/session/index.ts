@@ -806,9 +806,9 @@ export namespace Session {
       const cacheReadInputTokens = safe(input.usage.cachedInputTokens ?? 0)
       const cacheWriteInputTokens = safe(
         (input.metadata?.["anthropic"]?.["cacheCreationInputTokens"] ??
-          // @ts-expect-error
+          // @ts-expect-error Bedrock metadata shape is provider-specific and not part of the shared metadata type
           input.metadata?.["bedrock"]?.["usage"]?.["cacheWriteInputTokens"] ??
-          // @ts-expect-error
+          // @ts-expect-error Venice metadata shape is provider-specific and not part of the shared metadata type
           input.metadata?.["venice"]?.["usage"]?.["cacheCreationInputTokens"] ??
           0) as number,
       )

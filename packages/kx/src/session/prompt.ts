@@ -48,8 +48,7 @@ import { Shell } from "@/shell/shell"
 import { decodeDataUrl } from "@/util/data-url"
 import { Process } from "@/util/process"
 
-// @ts-ignore
-globalThis.AI_SDK_LOG_WARNINGS = false
+void ((globalThis as typeof globalThis & { AI_SDK_LOG_WARNINGS?: boolean }).AI_SDK_LOG_WARNINGS = false)
 
 const STRUCTURED_OUTPUT_DESCRIPTION = `Use this tool to return your final response in the requested structured format.
 

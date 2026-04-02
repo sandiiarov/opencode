@@ -9,7 +9,7 @@ export const GenerateCommand = {
       for (const method of ["get", "post", "put", "delete", "patch"] as const) {
         const operation = item[method]
         if (!operation?.operationId) continue
-        // @ts-expect-error
+        // @ts-expect-error OpenAPI operation objects accept vendor extensions like x-codeSamples
         operation["x-codeSamples"] = [
           {
             lang: "js",

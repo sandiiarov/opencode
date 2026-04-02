@@ -275,7 +275,7 @@ export namespace LLM {
           {
             async transformParams(args) {
               if (args.type === "stream") {
-                // @ts-expect-error
+                // @ts-expect-error Stream params expose prompt at runtime but not on the narrowed middleware type
                 args.params.prompt = ProviderTransform.message(args.params.prompt, input.model, options)
               }
               return args.params

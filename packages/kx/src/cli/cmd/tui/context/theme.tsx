@@ -409,7 +409,7 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
     return {
       theme: new Proxy(values(), {
         get(_target, prop) {
-          // @ts-expect-error
+          // @ts-expect-error Proxy access uses dynamic theme keys from the resolved theme object
           return values()[prop]
         },
       }),

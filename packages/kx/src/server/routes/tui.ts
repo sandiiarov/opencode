@@ -267,7 +267,7 @@ export const TuiRoutes = lazy(() =>
       async (c) => {
         const command = c.req.valid("json").command
         await Bus.publish(TuiEvent.CommandExecute, {
-          // @ts-expect-error
+          // @ts-expect-error Command routing narrows a user-provided string to the known TUI command union
           command: {
             session_new: "session.new",
             session_share: "session.share",

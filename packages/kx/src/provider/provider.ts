@@ -130,7 +130,7 @@ export namespace Provider {
     "@ai-sdk/perplexity": createPerplexity,
     "@ai-sdk/vercel": createVercel,
     "gitlab-ai-provider": createGitLab,
-    // @ts-ignore (TODO: kill this code so we dont have to maintain it)
+    // @ts-expect-error Legacy Copilot provider typing does not match the bundled provider map yet
     "@ai-sdk/github-copilot": createGitHubCopilotOpenAICompatible,
   }
 
@@ -949,13 +949,13 @@ export namespace Provider {
     function mergeProvider(providerID: ProviderID, provider: Partial<Info>) {
       const existing = providers[providerID]
       if (existing) {
-        // @ts-expect-error
+        // @ts-expect-error mergeDeep widens provider objects beyond the current Provider info type
         providers[providerID] = mergeDeep(existing, provider)
         return
       }
       const match = database[providerID]
       if (!match) return
-      // @ts-expect-error
+      // @ts-expect-error mergeDeep widens provider objects beyond the current Provider info type
       providers[providerID] = mergeDeep(match, provider)
     }
 
@@ -1275,7 +1275,7 @@ export namespace Provider {
 
         const res = await fetchFn(input, {
           ...opts,
-          // @ts-ignore see here: https://github.com/oven-sh/bun/issues/16682
+
           timeout: false,
         })
 
