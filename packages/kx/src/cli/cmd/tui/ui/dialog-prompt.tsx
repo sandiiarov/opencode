@@ -1,4 +1,4 @@
-import type { TextareaRenderable} from "@opentui/core";
+import type { TextareaRenderable } from "@opentui/core"
 import { TextAttributes } from "@opentui/core"
 import { useTheme } from "../context/theme"
 import { useDialog, type DialogContext } from "./dialog"
@@ -55,6 +55,7 @@ export function DialogPrompt(props: DialogPromptProps) {
           ref={(val: TextareaRenderable) => (textarea = val)}
           initialValue={props.value}
           placeholder={props.placeholder ?? "Enter text"}
+          placeholderColor={theme.textMuted}
           textColor={theme.text}
           focusedTextColor={theme.text}
           cursorColor={theme.text}

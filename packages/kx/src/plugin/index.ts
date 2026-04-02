@@ -102,7 +102,7 @@ export namespace Plugin {
                 const idx = plugin.lastIndexOf("@")
                 const pkg = idx > 0 ? plugin.substring(0, idx) : plugin
                 const version = idx > 0 ? plugin.substring(idx + 1) : "latest"
-                plugin = await BunProc.install(pkg, version).catch((err) => {
+                plugin = await BunProc.install(pkg, version, { ignoreScripts: true }).catch((err) => {
                   const cause = err instanceof Error ? err.cause : err
                   const detail = cause instanceof Error ? cause.message : String(cause ?? err)
                   log.error("failed to install plugin", { pkg, version, error: detail })

@@ -4,10 +4,12 @@ import { useKeyboard, useTerminalDimensions } from "@opentui/solid"
 import { useKeybind } from "@tui/context/keybind"
 import { useTheme, selectedForeground } from "@tui/context/theme"
 import { useDialog, type DialogContext } from "@tui/ui/dialog"
-import { entries, filter, flatMap, groupBy, isDeepEqual, pipe } from "remeda"
 import { batch, createEffect, createMemo, For, Show, type JSX, on } from "solid-js"
 import { createStore } from "solid-js/store"
 import * as fuzzysort from "fuzzysort"
+import { entries, filter, flatMap, groupBy, isDeepEqual, pipe } from "remeda"
+import { useTuiConfig } from "../context/tui-config"
+import { getScrollAcceleration } from "../util/scroll"
 import { Keybind } from "@/util/keybind"
 import { Locale } from "@/util/locale"
 
@@ -50,6 +52,8 @@ export type DialogSelectRef<T> = {
 export function DialogSelect<T>(props: DialogSelectProps<T>) {
   const dialog = useDialog()
   const { theme } = useTheme()
+  const tuiConfig = useTuiConfig()
+  const scrollAcceleration = createMemo(() => getScrollAcceleration(tuiConfig))
   const [store, setStore] = createStore({
     selected: 0,
     filter: "",
@@ -260,6 +264,7 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
               }, 1)
             }}
             placeholder={props.placeholder ?? "Search"}
+            placeholderColor={theme.textMuted}
           />
         </box>
       </box>
@@ -276,6 +281,7 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
           paddingRight={1}
           scrollbarOptions={{ visible: false }}
           ref={(r: ScrollBoxRenderable) => (scroll = r)}
+          scrollAcceleration={scrollAcceleration()}
           maxHeight={height()}
         >
           <For each={grouped()}>

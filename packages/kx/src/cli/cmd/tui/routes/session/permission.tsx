@@ -15,6 +15,8 @@ import { Keybind } from "@/util/keybind"
 import { Locale } from "@/util/locale"
 import { Global } from "@/global"
 import { useDialog } from "../../ui/dialog"
+import { useTuiConfig } from "../../context/tui-config"
+import { getScrollAcceleration } from "../../util/scroll"
 import { FETCH_MARK, READ_MARK, REFRESH_MARK, SEARCH_MARK, SHELL_MARK, TASK_MARK, TOOL_MARK, WARN_MARK } from "./icons"
 import { EDIT_MARK, EXTERNAL_DIR_MARK } from "../../icons"
 
@@ -51,6 +53,7 @@ function EditBody(props: { request: PermissionRequest }) {
   const theme = themeState.theme
   const syntax = themeState.syntax
 
+  const tuiConfig = useTuiConfig()
   const filepath = createMemo(() => (props.request.metadata?.filepath as string) ?? "")
   const diff = createMemo(() => (props.request.metadata?.diff as string) ?? "")
 
@@ -60,11 +63,13 @@ function EditBody(props: { request: PermissionRequest }) {
   })
 
   const ft = createMemo(() => filetype(filepath()))
+  const scrollAcceleration = createMemo(() => getScrollAcceleration(tuiConfig))
   return (
     <box flexDirection="column" gap={1}>
       <Show when={diff()}>
         <scrollbox
           height="100%"
+          scrollAcceleration={scrollAcceleration()}
           verticalScrollbarOptions={{
             trackOptions: {
               backgroundColor: theme.background,

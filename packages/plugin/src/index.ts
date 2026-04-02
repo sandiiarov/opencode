@@ -11,6 +11,7 @@ import type {
   Auth,
   Config,
 } from "@kx/sdk"
+import type { Auth as AuthV2, Model as ModelV2, Provider as ProviderV2 } from "@kx/sdk/v2"
 
 import type { BunShell } from "./shell.js"
 import { type ToolDefinition } from "./tool.js"
@@ -159,6 +160,15 @@ export type AuthOuathResult = { url: string; instructions: string } & (
     }
 )
 
+export type ProviderHookContext = {
+  auth?: AuthV2
+}
+
+export type ProviderHook = {
+  id: string
+  models?: (provider: ProviderV2, ctx: ProviderHookContext) => Promise<Record<string, ModelV2>>
+}
+
 export interface Hooks {
   event?: (input: { event: Event }) => Promise<void>
   config?: (input: Config) => Promise<void>
@@ -166,6 +176,7 @@ export interface Hooks {
     [key: string]: ToolDefinition
   }
   auth?: AuthHook
+  provider?: ProviderHook
   /**
    * Called when a new message is received
    */

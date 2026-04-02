@@ -1113,6 +1113,49 @@ export namespace Provider {
       mergeProvider(providerID, partial)
     }
 
+    const gitlab = ProviderID.make("gitlab")
+    if (discoveryLoaders[gitlab] && providers[gitlab] && isProviderAllowed(gitlab)) {
+      await (async () => {
+        const discovered = await discoveryLoaders[gitlab]()
+        for (const [modelID, model] of Object.entries(discovered)) {
+          if (!providers[gitlab].models[modelID]) {
+            providers[gitlab].models[modelID] = model
+          }
+        }
+      })().catch((e) => log.warn("state discovery error", { id: "gitlab", error: e }))
+    }
+
+    for (const hook of await Plugin.list()) {
+      const p = hook.provider
+      const models = p?.models
+      if (!p || !models) continue
+
+      const providerID = ProviderID.make(p.id)
+      if (disabled.has(providerID)) continue
+
+      const provider = providers[providerID]
+      if (!provider) continue
+
+      const pluginAuth = await Auth.get(providerID).catch(() => undefined)
+      provider.models = await models(provider as any, { auth: pluginAuth as any })
+        .then((next) => {
+          return Object.fromEntries(
+            Object.entries(next).map(([id, model]) => [
+              id,
+              {
+                ...model,
+                id: ModelID.make(id),
+                providerID,
+              },
+            ]),
+          )
+        })
+        .catch((error) => {
+          log.warn("provider plugin model sync failed", { id: providerID, error })
+          return provider.models
+        })
+    }
+
     for (const [id, provider] of Object.entries(providers)) {
       const providerID = ProviderID.make(id)
       if (!isProviderAllowed(providerID)) {
@@ -1139,7 +1182,6 @@ export namespace Provider {
 
         model.variants = mapValues(ProviderTransform.variants(model), (v) => v)
 
-        // Filter out disabled variants from config
         const configVariants = configProvider?.models?.[modelID]?.variants
         if (configVariants && model.variants) {
           const merged = mergeDeep(model.variants, configVariants)
@@ -1157,19 +1199,6 @@ export namespace Provider {
 
       log.info("found", { providerID })
     }
-
-    const gitlab = ProviderID.make("gitlab")
-    if (discoveryLoaders[gitlab] && providers[gitlab]) {
-      await (async () => {
-        const discovered = await discoveryLoaders[gitlab]()
-        for (const [modelID, model] of Object.entries(discovered)) {
-          if (!providers[gitlab].models[modelID]) {
-            providers[gitlab].models[modelID] = model
-          }
-        }
-      })().catch((e) => log.warn("state discovery error", { id: "gitlab", error: e }))
-    }
-
     return {
       models: languages,
       providers,

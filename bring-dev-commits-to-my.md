@@ -46,26 +46,43 @@
 - [ ] `733a3bd03` fix(core): prevent agent loop from stopping after tool calls with OpenAI-compatible providers
 - [ ] `48db7cf07` fix(opencode): batch snapshot revert without reordering
 - [ ] `880c0a747` fix: normalize filepath in FileTime to prevent Windows path mismatch
-- [ ] `e148b318b` fix(build): replace `require()` with dynamic `import()` in cross-spawn-spawner
+- [x] `e148b318b` fix(build): replace `require()` with dynamic `import()` in cross-spawn-spawner (skip: kx already uses `makeRunPromise`; no lazy runtime wrapper here)
 
 ### Notes
 
 - [ ] Prefer these first because they are the best candidates to import without broad architectural churn
 - [ ] Validate each one against local deletions before cherry-picking
 
+- [x] `f7f41dc3a` is relevant on `my`: local TUI had the same split scroll-acceleration logic in `packages/kx/src/cli/cmd/tui/routes/session/index.tsx` and several scrollboxes still ignored user config. Ported a shared helper plus wiring in autocomplete, permission diff, sidebar, dialog select, and the embedded error view in `packages/kx/src/cli/cmd/tui/app.tsx`
+- [x] `802d16557` is only partially relevant on `my`: import cleanup was already covered during the previous port, but `packages/kx/src/cli/cmd/tui/util/scroll.ts` needed the `scroll_speed !== undefined` guard so an explicit `0` is honored instead of falling back to the default speed
+- [x] `c526caae7` is relevant on `my`: assistant message footers and transcript export were still showing raw model ids. Ported provider/model lookup helper, wired footer rendering in `packages/kx/src/cli/cmd/tui/routes/session/index.tsx`, updated transcript formatting in `packages/kx/src/cli/cmd/tui/util/transcript.ts`, and added regression coverage in `packages/kx/test/cli/tui/transcript.test.ts`
+- [x] `df1c6c9e8` is not needed on `my`: session sharing is slated for removal in this fork, so the first-share consent dialog would add churn to a feature we do not plan to keep.
+- [x] `fa96cb9c6` is relevant on `my`: local `packages/kx/src/cli/cmd/tui/app.tsx` still cleared renderer selection for most keypresses whenever copy-on-select mode was active. Ported the focused-renderable guard so selections owned by the active input are preserved during global key handling.
+- [x] `d58004a86` is relevant on `my`: local `packages/kx/src/cli/cmd/tui/context/local.tsx` still assumed the last-used agent always exists. Ported the fallback so TUI state gracefully uses the first available visible agent after agent list changes.
+- [x] `186af2723` is partially relevant on `my`: local TUI still uses model variants, but it does not have the upstream `DialogVariant` surface. Ported the durable state fix in `packages/kx/src/cli/cmd/tui/context/local.tsx` so stale or removed variants fall back cleanly, while skipping the variant modal/dialog UX changes that do not map to this fork.
+- [x] `ba00e9a99` is not needed on `my`: upstream only removes `skipFilter={true}` from `packages/opencode/src/cli/cmd/tui/component/dialog-variant.tsx`, but this fork does not ship that dialog surface, so there is no local UI path to fix.
+- [x] `5d2dc8888` is relevant on `my`: the same dialog textareas and search input exist locally in `packages/kx/src/cli/cmd/tui/routes/session/question.tsx`, `packages/kx/src/cli/cmd/tui/ui/dialog-export-options.tsx`, `packages/kx/src/cli/cmd/tui/ui/dialog-prompt.tsx`, and `packages/kx/src/cli/cmd/tui/ui/dialog-select.tsx`. Ported `placeholderColor={theme.textMuted}` so placeholder text follows the active theme consistently.
+- [x] `f6fd43e57` is not needed on `my`: this fork does not ship the upstream TUI plugin runtime, plugin manager/install flow, or `tui.json` plugin pipeline that the refactor targets. Local `packages/kx/src/plugin/index.ts` still loads server-side plugins directly from `Config.get().plugin`, and `packages/kx/src/config/tui.ts` has no plugin/theme-package loading path, so porting this commit would be broad new surface area rather than a fork-relevant fix.
+- [x] `25a2b739e` is not needed on `my`: its meaningful changes depend on the upstream plugin manifest/runtime pipeline (`exports`-based target detection, plugin manager install flow, and no-entrypoint warning paths) that this fork does not ship.
+- [x] `2e78fdec4` is partially relevant on `my`: local plugin loading in `packages/kx/src/plugin/index.ts` still installs npm packages directly via `BunProc.install(...)`. Ported the shared safety bit in `packages/kx/src/bun/index.ts` and `packages/kx/src/plugin/index.ts` so plugin installs pass `--ignore-scripts`, while skipping the upstream TUI/plugin-manifest refactor that does not map to this fork.
+- [x] `1de06452d` is not needed on `my`: the fix targets upstream `packages/opencode/src/plugin/shared.ts` entrypoint resolution for `exports["./server"]` and `main` values like `dist/server.js`. This fork does not ship that resolver stack; `packages/kx/src/plugin/index.ts` still installs then imports the package directly, so there is no narrow local patch to apply.
+- [x] `0b1018f6d` is not needed on `my`: the fix targets upstream `packages/opencode/src/plugin/install.ts` and `patchPluginConfig(...)`, but this fork does not ship that installer/config-writer flow. There is no local `packages/kx/src/plugin/install.ts` or plugin manager patch path to preserve JSONC comments in.
+- [x] `1fcfb69bf` is partially relevant on `my`: the built-in GitHub Copilot plugin and provider pipeline still exist locally, so I ported the new provider hook surface in `packages/plugin/src/index.ts`, added `packages/kx/src/plugin/copilot-models.ts`, wired `packages/kx/src/plugin/copilot.ts` to sync model metadata from GitHub's endpoint with fallback to existing models, and updated `packages/kx/src/provider/provider.ts` to let provider hooks override model maps before final filtering. I skipped the upstream file move and kept the local layout intact.
+- [x] `e148b318b` is not needed on `my`: `packages/kx/src/effect/cross-spawn-spawner.ts` does not expose the lazy `rt()` / `runPromise*` wrapper that upstream fixed, and `kx` already centralizes runtime memoization in `packages/kx/src/effect/run-service.ts`
+
 ## Pass 2: TUI quality-of-life improvements
 
 ### Review next
 
-- [ ] `f7f41dc3a` fix(tui): apply scroll configuration uniformly across all scrollboxes
-- [ ] `802d16557` chore(tui): clean up scroll config follow-up
-- [ ] `c526caae7` fix: show model display name in message footer and transcript
-- [ ] `df1c6c9e8` tui: add consent dialog when sharing for the first time
-- [ ] `fa96cb9c6` fix selection expansion by retaining focused input selections during global key events
-- [ ] `d58004a86` fall back to first agent if last used agent is not available
-- [ ] `186af2723` make variant modal less annoying
-- [ ] `ba00e9a99` fix variant dialog filtering
-- [ ] `5d2dc8888` theme colors for dialog textarea placeholders
+- [x] `f7f41dc3a` fix(tui): apply scroll configuration uniformly across all scrollboxes (integrated into local TUI surfaces)
+- [x] `802d16557` chore(tui): clean up scroll config follow-up (ported behavioral bit: respect explicit `scroll_speed: 0`)
+- [x] `c526caae7` fix: show model display name in message footer and transcript (integrated into TUI and transcript export)
+- [x] `df1c6c9e8` tui: add consent dialog when sharing for the first time (skip: session sharing is being removed from `my`)
+- [x] `fa96cb9c6` fix selection expansion by retaining focused input selections during global key events (integrated into TUI keyboard selection handling)
+- [x] `d58004a86` fall back to first agent if last used agent is not available (integrated into local agent selection state)
+- [x] `186af2723` make variant modal less annoying (partially integrated: kept variant state/fallback fix, skipped modal UI additions not present on `my`)
+- [x] `ba00e9a99` fix variant dialog filtering (skip: `my` does not ship the upstream variant dialog surface)
+- [x] `5d2dc8888` theme colors for dialog textarea placeholders (integrated into local dialog textarea/input surfaces)
 
 ### Notes
 
@@ -76,12 +93,12 @@
 
 ### Review as one integration area
 
-- [ ] `f6fd43e57` refactor plugin/config loading, add theme-only plugin package support
-- [ ] `25a2b739e` warn only and ignore plugins without entrypoints, default config via exports
-- [ ] `2e78fdec4` ensure pinned plugin versions and do not run package scripts on install
-- [ ] `1de06452d` fix(plugin): properly resolve entrypoints without leading dot
-- [ ] `0b1018f6d` plugin installs should preserve jsonc comments
-- [ ] `1fcfb69bf` feat: add new provider plugin hook for resolving models and sync models from github models endpoint
+- [x] `f6fd43e57` refactor plugin/config loading, add theme-only plugin package support (skip: upstream TUI plugin/config runtime does not exist on `my`)
+- [x] `25a2b739e` warn only and ignore plugins without entrypoints, default config via exports (skip: upstream plugin install/runtime pipeline does not exist on `my`)
+- [x] `2e78fdec4` ensure pinned plugin versions and do not run package scripts on install (partially integrated: kept `--ignore-scripts` for local plugin installs)
+- [x] `1de06452d` fix(plugin): properly resolve entrypoints without leading dot (skip: local fork does not use the upstream entrypoint resolver stack)
+- [x] `0b1018f6d` plugin installs should preserve jsonc comments (skip: local fork has no upstream plugin install/config patch pipeline)
+- [x] `1fcfb69bf` feat: add new provider plugin hook for resolving models and sync models from github models endpoint (partially integrated: added provider hook API and Copilot model sync path)
 - [ ] `6274b0677` older base context: tui plugins
 - [ ] `f3997d808` older base context: Single target plugin entrypoints
 

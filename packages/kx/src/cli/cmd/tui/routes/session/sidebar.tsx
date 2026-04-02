@@ -2,6 +2,7 @@ import { useSync } from "@tui/context/sync"
 import { createMemo, For, Show } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useTheme } from "../../context/theme"
+import { useTuiConfig } from "../../context/tui-config"
 import type { AssistantMessage } from "@kx/sdk/v2"
 import { Installation } from "@/installation"
 import { useDirectory } from "../../context/directory"
@@ -23,6 +24,8 @@ import {
   TOKEN_MARK,
 } from "../../icons"
 
+import { getScrollAcceleration } from "../../util/scroll"
+
 const sidebar = 42
 const barw = 10
 
@@ -42,11 +45,13 @@ const progress = (n?: number | null, w = barw) => {
 export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
   const sync = useSync()
   const { theme } = useTheme()
+  const tuiConfig = useTuiConfig()
   const session = createMemo(() => sync.session.get(props.sessionID)!)
   const diff = createMemo(() => sync.data.session_diff[props.sessionID] ?? [])
   const todo = createMemo(() => sync.data.todo[props.sessionID] ?? [])
   const messages = createMemo(() => sync.data.message[props.sessionID] ?? [])
 
+  const scrollAcceleration = createMemo(() => getScrollAcceleration(tuiConfig))
   const [expanded, setExpanded] = createStore({
     diff: true,
     todo: true,
@@ -145,20 +150,21 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
               </Show>
               <For each={sync.data.lsp}>
                 {(item) => (
-                  <box flexDirection="row" gap={1}>
-                    <text
-                      flexShrink={0}
-                      style={{
-                        fg: {
-                          connected: theme.success,
-                          error: theme.error,
-                        }[item.status],
-                      }}
-                    >
-                      {item.status === "connected" ? STATUS_ON_MARK : STATUS_OFF_MARK}
-                    </text>
+                  <box>
                     <text fg={theme.textMuted} wrapMode="none">
-                      <span style={{ fg: lspcolor(item.id) }}>{lspicon(item.id)}</span> {item.id} {item.root}
+                      <span
+                        style={{
+                          fg: {
+                            connected: theme.success,
+                            error: theme.error,
+                          }[item.status],
+                        }}
+                      >
+                        {item.status === "connected" ? STATUS_ON_MARK : STATUS_OFF_MARK}
+                      </span>
+                      {"  "}
+                      {SEP_MARK} <span style={{ fg: lspcolor(item.id) }}>{lspicon(item.id)}</span> {item.id} {SEP_MARK}{" "}
+                      {FOLDER_MARK} {item.root}
                     </text>
                   </box>
                 )}
@@ -204,6 +210,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
               <Show when={diff().length <= 2 || expanded.diff}>
                 <scrollbox
                   flexGrow={1}
+                  scrollAcceleration={scrollAcceleration()}
                   minHeight={0}
                   verticalScrollbarOptions={{
                     trackOptions: {

@@ -3,7 +3,7 @@ import { Clipboard } from "@tui/util/clipboard"
 import { Selection } from "@tui/util/selection"
 import { MouseButton, TextAttributes } from "@opentui/core"
 import { RouteProvider, useRoute } from "@tui/context/route"
-import { Switch, Match, createEffect, ErrorBoundary, createSignal, onMount, batch, on } from "solid-js"
+import { Switch, Match, createEffect, createMemo, ErrorBoundary, createSignal, onMount, batch, on } from "solid-js"
 import { win32DisableProcessedInput, win32FlushInputBuffer, win32InstallCtrlCGuard } from "./win32"
 import { Flag } from "@/flag/flag"
 import { DialogProvider, useDialog } from "@tui/ui/dialog"
@@ -36,8 +36,9 @@ import { Provider } from "@/provider/provider"
 import { ArgsProvider, useArgs, type Args } from "./context/args"
 import open from "open"
 import { PromptRefProvider, usePromptRef } from "./context/prompt"
-import { TuiConfigProvider } from "./context/tui-config"
+import { TuiConfigProvider, useTuiConfig } from "./context/tui-config"
 import type { TuiConfig } from "@/config/tui"
+import { getScrollAcceleration } from "./util/scroll"
 import { Installation } from "@/installation"
 
 async function getTerminalBackgroundColor(): Promise<"dark" | "light"> {
@@ -222,7 +223,8 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
 
   useKeyboard((evt) => {
     if (!Flag.KX_EXPERIMENTAL_DISABLE_COPY_ON_SELECT) return
-    if (!renderer.getSelection()) return
+    const sel = renderer.getSelection()
+    if (!sel) return
 
     // Windows Terminal-like behavior:
     // - Ctrl+C copies and dismisses selection
@@ -243,6 +245,11 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       renderer.clearSelection()
       evt.preventDefault()
       evt.stopPropagation()
+      return
+    }
+
+    const focus = renderer.currentFocusedRenderable
+    if (focus?.hasSelection() && sel.selectedRenderables.includes(focus)) {
       return
     }
 
@@ -768,6 +775,8 @@ function ErrorComponent(props: {
 }) {
   const term = useTerminalDimensions()
   const renderer = useRenderer()
+  const tuiConfig = useTuiConfig()
+  const scrollAcceleration = createMemo(() => getScrollAcceleration(tuiConfig))
 
   const handleExit = async () => {
     renderer.setTerminalTitle("")
@@ -835,7 +844,7 @@ function ErrorComponent(props: {
           <text fg={colors.bg}>Exit</text>
         </box>
       </box>
-      <scrollbox height={Math.floor(term().height * 0.7)}>
+      <scrollbox height={Math.floor(term().height * 0.7)} scrollAcceleration={scrollAcceleration()}>
         <text fg={colors.muted}>{props.error.stack}</text>
       </scrollbox>
       <text fg={colors.text}>{props.error.message}</text>
