@@ -51,26 +51,49 @@ export namespace Terminal {
         return null
       }
 
+      const readPalette = (text: string) => {
+        const values = [] as Array<{ index: number; color: string }>
+        const parts = text.split("\x1b]4;")
+        for (const part of parts.slice(1)) {
+          const body = part.split("\x07")[0]?.split("\x1b")[0]
+          if (!body) continue
+          const [index, color] = body.split(";", 2)
+          if (!index || !color) continue
+          values.push({ index: parseInt(index), color })
+        }
+        return values
+      }
+
+      const readOSC = (text: string, prefix: string) => {
+        const start = text.indexOf(prefix)
+        if (start === -1) return
+        const body = text.slice(start + prefix.length)
+        const bel = body.indexOf("\x07")
+        const esc = body.indexOf("\x1b")
+        const end = [bel, esc].filter((value) => value !== -1).sort((a, b) => a - b)[0]
+        return end === undefined ? undefined : body.slice(0, end)
+      }
+
       const handler = (data: Buffer) => {
         const str = data.toString()
 
         // Match OSC 11 (background color)
-        const bgMatch = str.match(/\x1b]11;([^\x07\x1b]+)/)
-        if (bgMatch) {
-          background = parseColor(bgMatch[1])
+        const bg = readOSC(str, "\x1b]11;")
+        if (bg) {
+          background = parseColor(bg)
         }
 
         // Match OSC 10 (foreground color)
-        const fgMatch = str.match(/\x1b]10;([^\x07\x1b]+)/)
-        if (fgMatch) {
-          foreground = parseColor(fgMatch[1])
+        const fg = readOSC(str, "\x1b]10;")
+        if (fg) {
+          foreground = parseColor(fg)
         }
 
         // Match OSC 4 (palette colors)
-        const paletteMatches = str.matchAll(/\x1b]4;(\d+);([^\x07\x1b]+)/g)
+        const paletteMatches = readPalette(str)
         for (const match of paletteMatches) {
-          const index = parseInt(match[1])
-          const color = parseColor(match[2])
+          const index = match.index
+          const color = parseColor(match.color)
           if (color) paletteColors[index] = color
         }
 

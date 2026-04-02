@@ -19,7 +19,7 @@ export function createKxClient(config?: Config & { directory?: string; experimen
   }
 
   if (config?.directory) {
-    const isNonASCII = /[^\x00-\x7F]/.test(config.directory)
+    const isNonASCII = Array.from(config.directory).some((char) => (char.codePointAt(0) ?? 0) > 0x7f)
     const encodedDirectory = isNonASCII ? encodeURIComponent(config.directory) : config.directory
     config.headers = {
       ...config.headers,

@@ -52,12 +52,21 @@ async function getTerminalBackgroundColor(): Promise<"dark" | "light"> {
       clearTimeout(timeout)
     }
 
+    const readOSC = (text: string, prefix: string) => {
+      const start = text.indexOf(prefix)
+      if (start === -1) return
+      const body = text.slice(start + prefix.length)
+      const bel = body.indexOf("\x07")
+      const esc = body.indexOf("\x1b")
+      const end = [bel, esc].filter((value) => value !== -1).sort((a, b) => a - b)[0]
+      return end === undefined ? undefined : body.slice(0, end)
+    }
+
     const handler = (data: Buffer) => {
       const str = data.toString()
-      const match = str.match(/\x1b]11;([^\x07\x1b]+)/)
-      if (match) {
+      const color = readOSC(str, "\x1b]11;")
+      if (color) {
         cleanup()
-        const color = match[1]
         // Parse RGB values from color string
         // Formats: rgb:RR/GG/BB or #RRGGBB or rgb(R,G,B)
         let r = 0,

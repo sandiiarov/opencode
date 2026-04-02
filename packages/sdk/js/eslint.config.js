@@ -11,7 +11,6 @@ export default [
       "@typescript-eslint/no-explicit-any": "off",
       "import/first": "off",
       "import/newline-after-import": "off",
-      "no-control-regex": "off",
     },
   },
 ]
