@@ -55,8 +55,8 @@ incremental steps - use the todo tool to track your progress.
 - Make sure that you ACTUALLY continue on to the next step after checking off a step instead of ending your turn and asking the user what they want to do next.
 
 ## 4. Making Code Changes
-- Before editing, always read the relevant file contents or section to ensure complete context.
-- Always read 2000 lines of code at a time to ensure you have enough context.
+- Read enough surrounding context before the first edit on a file, but do not over-read. If a recent `read`, `grep`, `edit`, or `write` already gave you the needed context and fresh ids, use that instead of reading the same file again.
+- NEVER call `read` on a file immediately after your own `edit` or `write` of that same file just to verify the change, inspect the result, or get fresh ids. The `Updated lines` returned by `edit` and `write` are already the fresh source of truth for follow-up edits in that area. Re-read only if you need additional context not covered by those returned lines, if a tool reports the ids are stale or missing, or if you have concrete reason to think the file changed outside your last tool call.
 - If an additive edit is not applied correctly, attempt to reapply it.
 - Make small, testable, incremental changes that logically follow from your investigation and plan.
 - Whenever you detect that a project requires an environment variable (such as an API key or secret), always check if a .env file exists in the project root. If it does not exist, automatically create a .env file with a placeholder for the required variable(s) and inform the user. Do this proactively, without waiting for the user to request it.

@@ -7,6 +7,7 @@ import { ModelID, ProviderID } from "../../src/provider/schema"
 import { Session } from "../../src/session"
 import { Message } from "../../src/session/message"
 import { SessionPrompt } from "../../src/session/prompt"
+import { SystemPrompt } from "../../src/session/system"
 import { Log } from "../../src/util/log"
 import { tmpdir } from "../fixture/fixture"
 
@@ -285,4 +286,23 @@ describe("session.agent-resolution", () => {
       },
     })
   }, 30000)
+})
+
+describe("session.prompt reread guidance", () => {
+  test("gpt-5.4 provider prompt forbids immediate same-file rereads after edit", () => {
+    const model = { api: { id: "gpt-5.4" } } as Parameters<typeof SystemPrompt.provider>[0]
+    const prompt = SystemPrompt.provider(model).join("\n")
+
+    expect(prompt).toContain("NEVER call `read` on a file immediately after your own `edit` or `write`")
+    expect(prompt).not.toContain("Always read 2000 lines of code at a time")
+  })
+
+  test("copilot gpt-5 prompt does not require blanket rereads before editing", async () => {
+    const file = path.join(process.cwd(), "src/session/prompt/copilot-gpt-5.txt")
+    const prompt = await Bun.file(file).text()
+
+    expect(prompt).toContain("NEVER call `read` on a file immediately after your own `edit` or `write`")
+    expect(prompt).not.toContain("Before editing, always read the relevant file contents or section")
+    expect(prompt).not.toContain("Always read 2000 lines of code at a time")
+  })
 })

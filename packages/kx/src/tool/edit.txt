@@ -1,12 +1,12 @@
-Performs additive hashline edits in files.
+Performs additive line-id edits in files.
 
 Usage:
-- You must have fresh anchors or a fresh version token for the file before editing it. Prefer reusing stable anchors from the latest `read`, `grep`, `edit`, or `write` result and pass `expectedVersion` from prior tool metadata when available. Re-read only when anchors are missing, ambiguous, or you need more context.
-- Stable anchors can survive nearby line insertions and deletions, so prefer reusing the original anchor before re-reading.
-- Keep edits additive and narrow. Prefer a few small anchored operations over rewriting unrelated surrounding code.
+- You must have fresh line ids for the file before editing it. The latest `read`, `grep`, `edit`, or `write` result is valid input. NEVER call `read` on a file immediately after your own `edit` or `write` of that same file just to verify the change, inspect the result, or get fresh ids. The returned `Updated lines` ids are already the fresh source of truth for follow-up edits in that area. Re-read only when ids are missing, stale, or you need more context.
+- `read` and `grep` display lines as `id|text`. Use only the plain id, like `ryh9`, in `pos` and `end`.
+- Keep edits additive and narrow. Prefer a few small line-id operations over rewriting unrelated surrounding code.
 - Each edit call applies against the original file state. Do not renumber later edits in the same call.
-- Use `replace` for line/range replacement, `append` to insert after an anchor or at EOF, and `prepend` to insert before an anchor or at BOF.
-- `lines` must contain only the new file content to insert or replace. Do not include `LINE#ID` prefixes or diff markers.
+- Use `replace` for line/range replacement, `append` to insert after a line id or at EOF, and `prepend` to insert before a line id or at BOF.
+- `lines` must contain only the new file content to insert or replace. Do not include line id prefixes or diff markers.
 - ALWAYS prefer editing existing files in the codebase. NEVER write new files unless explicitly required.
 - Only use emojis if the user explicitly requests it. Avoid adding emojis to files unless asked.
-- If an anchor no longer resolves uniquely, the tool will return updated anchors or candidate context. Reuse those exact anchors or re-read the file.
+- If a line id no longer exists, the tool will fail and ask you to read the file again before modifying it.

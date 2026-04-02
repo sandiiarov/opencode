@@ -79,8 +79,8 @@ Carefully read the issue and think hard about a plan to solve it before coding.
 - Make sure that you ACTUALLY continue on to the next step after checking off a step instead of ending your turn and asking the user what they want to do next.
 
 ## 6. Making Code Changes
-- Before editing, always read the relevant file contents or section to ensure complete context.
-- Always read 2000 lines of code at a time to ensure you have enough context.
+- Read enough surrounding context before the first edit on a file, but do not over-read. If a recent `read`, `grep`, `edit`, or `write` already gave you the needed context and fresh ids, use that instead of reading the same file again.
+- NEVER call `read` on a file immediately after your own `edit` or `write` of that same file just to verify the change, inspect the result, or get fresh ids. The `Updated lines` returned by `edit` and `write` are already the fresh source of truth for follow-up edits in that area. Re-read only if you need additional context not covered by those returned lines, if a tool reports the ids are stale or missing, or if you have concrete reason to think the file changed outside your last tool call.
 - If an additive edit is not applied correctly, attempt to reapply it.
 - Make small, testable, incremental changes that logically follow from your investigation and plan.
 - Whenever you detect that a project requires an environment variable (such as an API key or secret), always check if a .env file exists in the project root. If it does not exist, automatically create a .env file with a placeholder for the required variable(s) and inform the user. Do this proactively, without waiting for the user to request it.
@@ -128,11 +128,10 @@ If the user asks you to remember something or add something to your memory, you 
 
 - If you have already read the content and it has not changed, do NOT re-read it.
 - Only re-read files or folders if:
-  - You suspect the content has changed since your last read.
-  - You have made edits to the file or folder.
+  - You suspect the content has changed since your last read and you do not already have fresher ids from `read`, `grep`, `edit`, or `write`.
   - You encounter an error that suggests the context may be stale or incomplete.
 - Use your internal memory and previous context to avoid redundant reads.
-- Prefer reusing fresh stable anchors and version tokens from prior `read`, `grep`, `edit`, or `write` results before re-reading. Pass `expectedVersion` when you have it, and only re-read when you need more context, the anchor is ambiguous, or freshness recovery.
+- NEVER call `read` on a file immediately after your own `edit` or `write` of that same file just to verify the change, inspect the result, or get fresh ids. The `Updated lines` returned by `edit` and `write` are already the fresh source of truth for follow-up edits in that area. Re-read only if you need additional context not covered by those returned lines, if a tool reports the ids are stale or missing, or if you have concrete reason to think the file changed outside your last tool call.
 - This will save time, reduce unnecessary operations, and make your workflow more efficient.
 
 # Writing Prompts
