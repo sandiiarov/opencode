@@ -1,3 +1,4 @@
+import { createRequire } from "module"
 import { Cause, Effect, Layer, Scope, ServiceMap } from "effect"
 // @ts-ignore
 import { createWrapper } from "@parcel/watcher/wrapper"
@@ -20,6 +21,7 @@ import { Log } from "../util/log"
 
 declare const KX_LIBC: string | undefined
 
+const requireModule = createRequire(import.meta.url)
 export namespace FileWatcher {
   const log = Log.create({ service: "file.watcher" })
   const SUBSCRIBE_TIMEOUT_MS = 10_000
@@ -36,7 +38,7 @@ export namespace FileWatcher {
 
   const watcher = lazy((): typeof ParcelWatcher | undefined => {
     try {
-      const binding = require(
+      const binding = requireModule(
         `@parcel/watcher-${process.platform}-${process.arch}${process.platform === "linux" ? `-${KX_LIBC || "glibc"}` : ""}`,
       )
       return createWrapper(binding) as typeof ParcelWatcher

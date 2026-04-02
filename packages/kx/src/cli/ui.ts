@@ -1,3 +1,4 @@
+import { createInterface } from "readline"
 import z from "zod"
 import { EOL } from "os"
 import { NamedError } from "@kx/util/error"
@@ -90,8 +91,7 @@ export namespace UI {
   }
 
   export async function input(prompt: string): Promise<string> {
-    const readline = require("readline")
-    const rl = readline.createInterface({
+    const rl = createInterface({
       input: process.stdin,
       output: process.stdout,
     })
