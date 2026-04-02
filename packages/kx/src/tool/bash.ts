@@ -23,6 +23,7 @@ import * as CrossSpawnSpawner from "@/effect/cross-spawn-spawner"
 
 const MAX_METADATA_LENGTH = 30_000
 const DEFAULT_TIMEOUT = Flag.KX_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS || 2 * 60 * 1000
+const PS = new Set(["powershell", "pwsh"])
 
 export const log = Log.create({ service: "bash-tool" })
 
@@ -57,10 +58,18 @@ const parser = lazy(async () => {
 // TODO: we may wanna rename this tool so it works better on other shells
 export const BashTool = Tool.define("bash", async () => {
   const shell = Shell.acceptable()
+  const name = Shell.name(shell)
+  const chain =
+    name === "powershell"
+      ? "If the commands depend on each other and must run sequentially, avoid '&&' in this shell because Windows PowerShell 5.1 does not support it. Use PowerShell conditionals such as `cmd1; if ($?) { cmd2 }` when later commands must depend on earlier success."
+      : "If the commands depend on each other and must run sequentially, use a single Bash call with '&&' to chain them together (e.g., `git add . && git commit -m \"message\" && git push`). For instance, if one operation must complete before another starts (like mkdir before cp, Write before Bash for git operations, or git add before git commit), run these operations sequentially instead."
   log.info("bash tool using shell", { shell })
 
   return {
     description: DESCRIPTION.replaceAll("${directory}", Instance.directory)
+      .replaceAll("${os}", process.platform)
+      .replaceAll("${shell}", name)
+      .replaceAll("${chaining}", chain)
       .replaceAll("${maxLines}", String(Truncate.MAX_LINES))
       .replaceAll("${maxBytes}", String(Truncate.MAX_BYTES)),
     parameters: z.object({
@@ -84,64 +93,70 @@ export const BashTool = Tool.define("bash", async () => {
         throw new Error(`Invalid timeout value: ${params.timeout}. Timeout must be a positive number.`)
       }
       const timeout = params.timeout ?? DEFAULT_TIMEOUT
-      const tree = await parser().then((p) => p.parse(params.command))
-      if (!tree) {
-        throw new Error("Failed to parse command")
-      }
+      const ps = PS.has(name)
       const directories = new Set<string>()
       if (!Instance.containsPath(cwd)) directories.add(cwd)
       const patterns = new Set<string>()
       const always = new Set<string>()
 
-      for (const node of tree.rootNode.descendantsOfType("command")) {
-        if (!node) continue
-
-        // Get full command text including redirects if present
-        const commandText = node.parent?.type === "redirected_statement" ? node.parent.text : node.text
-
-        const command = []
-        for (let i = 0; i < node.childCount; i++) {
-          const child = node.child(i)
-          if (!child) continue
-          if (
-            child.type !== "command_name" &&
-            child.type !== "word" &&
-            child.type !== "string" &&
-            child.type !== "raw_string" &&
-            child.type !== "concatenation"
-          ) {
-            continue
-          }
-          command.push(child.text)
+      if (ps) {
+        const command = params.command.trim().split(/\s+/).filter(Boolean)
+        if (command.length) {
+          patterns.add(params.command)
+          always.add(BashArity.prefix(command).join(" ") + " *")
+        }
+      } else {
+        const tree = await parser().then((p) => p.parse(params.command))
+        if (!tree) {
+          throw new Error("Failed to parse command")
         }
 
-        // not an exhaustive list, but covers most common cases
-        if (["cd", "rm", "cp", "mv", "mkdir", "touch", "chmod", "chown", "cat"].includes(command[0])) {
-          for (const arg of command.slice(1)) {
-            if (arg.startsWith("-") || (command[0] === "chmod" && arg.startsWith("+"))) continue
-            const resolved = await fs.realpath(path.resolve(cwd, arg)).catch(() => "")
-            log.info("resolved path", { arg, resolved })
-            if (resolved) {
-              const normalized =
-                process.platform === "win32" ? Filesystem.windowsPath(resolved).replace(/\//g, "\\") : resolved
-              if (!Instance.containsPath(normalized)) {
-                const dir = (await Filesystem.isDir(normalized)) ? normalized : path.dirname(normalized)
-                directories.add(dir)
+        for (const node of tree.rootNode.descendantsOfType("command")) {
+          if (!node) continue
+
+          const commandText = node.parent?.type === "redirected_statement" ? node.parent.text : node.text
+
+          const command = []
+          for (let i = 0; i < node.childCount; i++) {
+            const child = node.child(i)
+            if (!child) continue
+            if (
+              child.type !== "command_name" &&
+              child.type !== "word" &&
+              child.type !== "string" &&
+              child.type !== "raw_string" &&
+              child.type !== "concatenation"
+            ) {
+              continue
+            }
+            command.push(child.text)
+          }
+
+          if (["cd", "rm", "cp", "mv", "mkdir", "touch", "chmod", "chown", "cat"].includes(command[0])) {
+            for (const arg of command.slice(1)) {
+              if (arg.startsWith("-") || (command[0] === "chmod" && arg.startsWith("+"))) continue
+              const resolved = await fs.realpath(path.resolve(cwd, arg)).catch(() => "")
+              log.info("resolved path", { arg, resolved })
+              if (resolved) {
+                const normalized =
+                  process.platform === "win32" ? Filesystem.windowsPath(resolved).replace(/\//g, "\\") : resolved
+                if (!Instance.containsPath(normalized)) {
+                  const dir = (await Filesystem.isDir(normalized)) ? normalized : path.dirname(normalized)
+                  directories.add(dir)
+                }
               }
             }
           }
-        }
 
-        // cd covered by above check
-        if (command.length && command[0] !== "cd") {
-          patterns.add(commandText)
-          always.add(BashArity.prefix(command).join(" ") + " *")
+          if (command.length && command[0] !== "cd") {
+            patterns.add(commandText)
+            always.add(BashArity.prefix(command).join(" ") + " *")
+          }
         }
       }
 
       if (directories.size > 0) {
         const globs = Array.from(directories).map((dir) => {
-          // Preserve POSIX-looking paths with /s, even on Windows
           if (dir.startsWith("/")) return `${dir.replace(/[\\/]+$/, "")}/*`
           return path.join(dir, "*")
         })
@@ -186,13 +201,19 @@ export const BashTool = Tool.define("bash", async () => {
         Effect.gen(function* () {
           const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
           const handle = yield* spawner.spawn(
-            ChildProcess.make(params.command, [], {
-              shell,
-              cwd,
-              env,
-              stdin: "ignore",
-              detached: process.platform !== "win32",
-            }),
+            ps && process.platform === "win32"
+              ? ChildProcess.make(shell, ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", params.command], {
+                  cwd,
+                  env,
+                  stdin: "ignore",
+                })
+              : ChildProcess.make(params.command, [], {
+                  shell,
+                  cwd,
+                  env,
+                  stdin: "ignore",
+                  detached: process.platform !== "win32",
+                }),
           )
 
           yield* Effect.forkScoped(

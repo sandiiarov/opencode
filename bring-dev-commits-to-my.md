@@ -114,7 +114,7 @@
 
 - [x] `e4ff1ea77` refactor(bash): use Effect ChildProcess for bash tool execution (integrated: switched `packages/kx/src/tool/bash.ts` to `ChildProcessSpawner` execution, preserved streamed metadata/output on abort and timeout, added lazy runtime helpers in `packages/kx/src/effect/cross-spawn-spawner.ts`, and added regression coverage in `packages/kx/test/tool/bash.test.ts`)
 - [x] `a9c85b7c2` refactor(shell): use Effect ChildProcess for shell command execution (integrated: switched `packages/kx/src/session/prompt.ts` shell execution to `ChildProcessSpawner`, kept streaming metadata updates and abort handling, fixed login-shell invocation ordering for bash/zsh, and added shell regression coverage in `packages/kx/test/session/prompt.test.ts`)
-- [ ] `b23437008` feat(windows): add first-class pwsh/powershell support
+- [x] `b23437008` feat(windows): add first-class pwsh/powershell support (partially integrated: taught `packages/kx/src/shell/shell.ts` to normalize shell names, detect login/posix shells, prefer PowerShell on Windows, and resolve Git Bash paths; updated `packages/kx/src/session/prompt.ts`, `packages/kx/src/pty/index.ts`, and `packages/kx/src/tool/bash.ts` to use those helpers plus direct PowerShell command launching; added coverage in `packages/kx/test/shell/shell.test.ts`; skipped the full upstream PowerShell tree-sitter permission parser and dependency add for now)
 - [ ] `15a8c22a2` tweak: adjust bash tool description to increase cache hit rates between projects
 
 ### Notes
