@@ -176,7 +176,7 @@
 ### Review only if server route/schema changes are selected
 
 - [x] `57a5236e7` chore: generate (skip: pure generated fallout in `packages/sdk/js/src/v2/gen/types.gen.ts` and `packages/sdk/openapi.json` for upstream API/schema changes that have not been selected on `my`. No hand-written runtime behavior changes to port.)
-- [ ] `a76be695c` refactor(core): split out instance and route through workspaces
+- [x] `a76be695c` refactor(core): split out instance and route through workspaces (skip: broad server/control-plane refactor plus generated SDK/OpenAPI churn. Local `packages/kx/src/server/server.ts` already has its own `WorkspaceContext` + `Instance.provide(...)` bootstrap and `packages/kx/src/control-plane/workspace-router-middleware.ts` already handles remote workspace forwarding, so the upstream extraction into `server/instance.ts` / `server/middleware.ts` is not a standalone behavior fix on this fork. The only potentially interesting piece is the `openapi()` metadata-generation workaround, but there is no current failing test or concrete schema gap on `my`, so it is not worth porting speculatively.)
 - [ ] related `generate` commits tied to selected API changes
 
 ### Notes
