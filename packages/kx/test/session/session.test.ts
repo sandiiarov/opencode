@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, spyOn, test } from "bun:test"
 import path from "path"
 import { Session } from "../../src/session"
 import { Bus } from "../../src/bus"
@@ -6,6 +6,7 @@ import { Log } from "../../src/util/log"
 import { Instance } from "../../src/project/instance"
 import { Message } from "../../src/session/message"
 import { MessageID, PartID } from "../../src/session/schema"
+import { SessionSummary } from "../../src/session/summary"
 
 const projectRoot = path.join(__dirname, "../..")
 Log.init({ print: false })
@@ -139,4 +140,30 @@ describe("step-finish token propagation via Bus event", () => {
     },
     { timeout: 30000 },
   )
+})
+
+describe("session summary", () => {
+  test("should ignore summary failures for background callers", async () => {
+    await Instance.provide({
+      directory: projectRoot,
+      fn: async () => {
+        const session = await Session.create({})
+        const messages = spyOn(Session, "messages").mockImplementation(() => {
+          throw new Error("boom")
+        })
+
+        try {
+          await expect(
+            SessionSummary.summarize({
+              sessionID: session.id,
+              messageID: MessageID.ascending(),
+            }),
+          ).resolves.toBeUndefined()
+        } finally {
+          messages.mockRestore()
+          await Session.remove(session.id)
+        }
+      },
+    })
+  })
 })

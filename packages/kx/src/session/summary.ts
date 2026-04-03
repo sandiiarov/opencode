@@ -67,24 +67,25 @@ export namespace SessionSummary {
     return Buffer.from(bytes).toString()
   }
 
-  export const summarize = fn(
-    z.object({
-      sessionID: SessionID.zod,
-      messageID: MessageID.zod,
-    }),
-    async (input) => {
-      try {
-        const all = Session.messages({ sessionID: input.sessionID })
-        await Promise.all([
-          summarizeSession({ sessionID: input.sessionID, messages: all }),
-          summarizeMessage({ messageID: input.messageID, messages: all }),
-        ])
-      } catch (err) {
-        if (NotFoundError.isInstance(err)) return
-        throw err
-      }
-    },
-  )
+  const SummarizeInput = z.object({
+    sessionID: SessionID.zod,
+    messageID: MessageID.zod,
+  })
+
+  const summarizeUnsafe = fn(SummarizeInput, async (input) => {
+    try {
+      const all = Session.messages({ sessionID: input.sessionID })
+      await Promise.all([
+        summarizeSession({ sessionID: input.sessionID, messages: all }),
+        summarizeMessage({ messageID: input.messageID, messages: all }),
+      ])
+    } catch (err) {
+      if (NotFoundError.isInstance(err)) return
+      throw err
+    }
+  })
+
+  export const summarize = (input: z.infer<typeof SummarizeInput>) => summarizeUnsafe(input).catch(() => {})
 
   async function summarizeSession(input: { sessionID: SessionID; messages: Message.WithParts[] }) {
     const diffs = await computeDiff({ messages: input.messages })
@@ -118,26 +119,29 @@ export namespace SessionSummary {
     await Session.updateMessage(userMsg)
   }
 
-  export const diff = fn(
-    z.object({
-      sessionID: SessionID.zod,
-      messageID: MessageID.zod.optional(),
-    }),
-    async (input) => {
-      const diffs = await Storage.read<Snapshot.FileDiff[]>(["session_diff", input.sessionID]).catch(() => [])
-      const next = diffs.map((item) => {
-        const file = unquoteGitPath(item.file)
-        if (file === item.file) return item
-        return {
-          ...item,
-          file,
-        }
-      })
-      const changed = next.some((item, i) => item.file !== diffs[i]?.file)
-      if (changed) Storage.write(["session_diff", input.sessionID], next).catch(() => {})
-      return next
-    },
-  )
+  export const DiffInput = z.object({
+    sessionID: SessionID.zod,
+    messageID: MessageID.zod.optional(),
+  })
+
+  const diffUnsafe = fn(DiffInput, async (input) => {
+    const diffs = await Storage.read<Snapshot.FileDiff[]>(["session_diff", input.sessionID]).catch(() => [])
+    const next = diffs.map((item) => {
+      const file = unquoteGitPath(item.file)
+      if (file === item.file) return item
+      return {
+        ...item,
+        file,
+      }
+    })
+    const changed = next.some((item, i) => item.file !== diffs[i]?.file)
+    if (changed) Storage.write(["session_diff", input.sessionID], next).catch(() => {})
+    return next
+  })
+
+  export async function diff(input: z.infer<typeof DiffInput>) {
+    return diffUnsafe(input)
+  }
 
   export async function computeDiff(input: { messages: Message.WithParts[] }) {
     let from: string | undefined
