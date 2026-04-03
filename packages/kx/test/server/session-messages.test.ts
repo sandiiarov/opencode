@@ -3,7 +3,7 @@ import path from "path"
 import { Instance } from "../../src/project/instance"
 import { Server } from "../../src/server/server"
 import { Session } from "../../src/session"
-import { Message } from "../../src/session/message"
+import type { Message } from "../../src/session/message"
 import { MessageID, PartID, type SessionID } from "../../src/session/schema"
 import { Log } from "../../src/util/log"
 
@@ -128,5 +128,17 @@ describe("session.prompt_async error handling", () => {
     const route = src.slice(start, end)
     expect(route).toContain(".catch(")
     expect(route).toContain("Bus.publish(Session.Event.Error")
+  })
+})
+
+describe("session cancel route", () => {
+  test("cancel endpoint awaits SessionPrompt.cancel", async () => {
+    const src = await Bun.file(path.join(import.meta.dir, "../../src/server/routes/session.ts")).text()
+    const start = src.indexOf('"/:sessionID/abort"')
+    const end = src.indexOf('"/:sessionID/share"', start)
+    expect(start).toBeGreaterThan(-1)
+    expect(end).toBeGreaterThan(start)
+    const route = src.slice(start, end)
+    expect(route).toContain("await SessionPrompt.cancel")
   })
 })

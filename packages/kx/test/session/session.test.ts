@@ -148,9 +148,9 @@ describe("session summary", () => {
       directory: projectRoot,
       fn: async () => {
         const session = await Session.create({})
-        const messages = spyOn(Session, "messages").mockImplementation(() => {
+        const messages = spyOn(Session, "messages").mockImplementation((() => {
           throw new Error("boom")
-        })
+        }) as unknown as typeof Session.messages)
 
         try {
           await expect(
