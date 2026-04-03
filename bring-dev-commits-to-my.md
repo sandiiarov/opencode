@@ -41,11 +41,11 @@
 
 ### Review / cherry-pick candidates
 
-- [ ] `55895d066` core: fix plugin hooks to properly handle async operations
-- [ ] `a5b1dc081` test: add regression coverage for sync plugin hooks
-- [ ] `733a3bd03` fix(core): prevent agent loop from stopping after tool calls with OpenAI-compatible providers
-- [ ] `48db7cf07` fix(opencode): batch snapshot revert without reordering
-- [ ] `880c0a747` fix: normalize filepath in FileTime to prevent Windows path mismatch
+- [x] `55895d066` core: fix plugin hooks to properly handle async operations (already integrated locally: `packages/kx/src/plugin/index.ts` already awaits hook promises and `packages/kx/test/plugin/trigger.test.ts` covers async hooks)
+- [x] `a5b1dc081` test: add regression coverage for sync plugin hooks (already integrated locally in `packages/kx/test/plugin/trigger.test.ts`)
+- [x] `733a3bd03` fix(core): prevent agent loop from stopping after tool calls with OpenAI-compatible providers (already integrated locally in `packages/kx/src/session/prompt.ts` with regression coverage in `packages/kx/test/session/prompt.test.ts`)
+- [x] `48db7cf07` fix(opencode): batch snapshot revert without reordering (already integrated locally in `packages/kx/src/snapshot/index.ts` with regression coverage in `packages/kx/test/snapshot/snapshot.test.ts`)
+- [x] `880c0a747` fix: normalize filepath in FileTime to prevent Windows path mismatch (already integrated locally in `packages/kx/src/file/time.ts` with regression coverage in `packages/kx/test/file/time.test.ts`)
 - [x] `e148b318b` fix(build): replace `require()` with dynamic `import()` in cross-spawn-spawner (skip: kx already uses `makeRunPromise`; no lazy runtime wrapper here)
 
 ### Notes
@@ -53,6 +53,11 @@
 - [ ] Prefer these first because they are the best candidates to import without broad architectural churn
 - [ ] Validate each one against local deletions before cherry-picking
 
+- [x] `55895d066` is already effectively integrated on `my`: local `packages/kx/src/plugin/index.ts` already awaits hook promises inside `Plugin.trigger`, and `packages/kx/test/plugin/trigger.test.ts` already covers both sync and async hooks, so there is no additional port to make.
+- [x] `733a3bd03` is already effectively integrated on `my`: local `packages/kx/src/session/prompt.ts` already keeps the loop alive when an assistant message has tool parts even if `finish` is `stop`, and `packages/kx/test/session/prompt.test.ts` covers that regression path.
+- [x] `a5b1dc081` is already effectively integrated on `my`: local `packages/kx/test/plugin/trigger.test.ts` already includes the synchronous hook regression case upstream added.
+- [x] `48db7cf07` is already effectively integrated on `my`: local `packages/kx/src/snapshot/index.ts` already batches non-conflicting snapshot reverts without reordering patch precedence, and `packages/kx/test/snapshot/snapshot.test.ts` includes the upstream regression cases for repeated hashes and large mixed batches.
+- [x] `880c0a747` is already effectively integrated on `my`: local `packages/kx/src/file/time.ts` already normalizes paths for lock/read/get/assert, and `packages/kx/test/file/time.test.ts` covers mixed slash-direction reads, assertions, gets, and locks.
 - [x] `f7f41dc3a` is relevant on `my`: local TUI had the same split scroll-acceleration logic in `packages/kx/src/cli/cmd/tui/routes/session/index.tsx` and several scrollboxes still ignored user config. Ported a shared helper plus wiring in autocomplete, permission diff, sidebar, dialog select, and the embedded error view in `packages/kx/src/cli/cmd/tui/app.tsx`
 - [x] `802d16557` is only partially relevant on `my`: import cleanup was already covered during the previous port, but `packages/kx/src/cli/cmd/tui/util/scroll.ts` needed the `scroll_speed !== undefined` guard so an explicit `0` is honored instead of falling back to the default speed
 - [x] `c526caae7` is relevant on `my`: assistant message footers and transcript export were still showing raw model ids. Ported provider/model lookup helper, wired footer rendering in `packages/kx/src/cli/cmd/tui/routes/session/index.tsx`, updated transcript formatting in `packages/kx/src/cli/cmd/tui/util/transcript.ts`, and added regression coverage in `packages/kx/test/cli/tui/transcript.test.ts`
@@ -69,6 +74,25 @@
 - [x] `0b1018f6d` is not needed on `my`: the fix targets upstream `packages/opencode/src/plugin/install.ts` and `patchPluginConfig(...)`, but this fork does not ship that installer/config-writer flow. There is no local `packages/kx/src/plugin/install.ts` or plugin manager patch path to preserve JSONC comments in.
 - [x] `1fcfb69bf` is partially relevant on `my`: the built-in GitHub Copilot plugin and provider pipeline still exist locally, so I ported the new provider hook surface in `packages/plugin/src/index.ts`, added `packages/kx/src/plugin/copilot-models.ts`, wired `packages/kx/src/plugin/copilot.ts` to sync model metadata from GitHub's endpoint with fallback to existing models, and updated `packages/kx/src/provider/provider.ts` to let provider hooks override model maps before final filtering. I skipped the upstream file move and kept the local layout intact.
 - [x] `e148b318b` is not needed on `my`: `packages/kx/src/effect/cross-spawn-spawner.ts` does not expose the lazy `rt()` / `runPromise*` wrapper that upstream fixed, and `kx` already centralizes runtime memoization in `packages/kx/src/effect/run-service.ts`
+
+### Recent upstream review
+
+- [ ] `5daf2fa7f` looks worth evaluating on `my`: likely local behavior fix for compaction replies matching conversation language; review once pass-5 session work is active
+- [x] `733a3bd03` already integrated on `my`: local loop exit logic checks for assistant tool parts before honoring `finish: "stop"`, and `packages/kx/test/session/prompt.test.ts` verifies the follow-up loop continues
+- [x] `df1c6c9e8` remains a skip on `my`: first-share consent is tied to session sharing, which this fork plans to remove
+- [x] `e148b318b` remains a skip on `my`: local cross-spawn runtime shape does not match the upstream lazy wrapper bug
+- [ ] `00d6841f8` may matter if local console token refresh behavior still exists in the trimmed auth flow; review only if token expiry bugs show up
+- [x] `1fcfb69bf` already partially integrated on `my`: provider hook API and Copilot model sync path were ported without the upstream plugin/runtime reshuffle
+- [x] `d66e6dc25` skip by default: Venice AI dependency/provider addition is outside the current TUI/core-focused scope
+- [x] `811c7e249` skip by default: CLI usage-exceeded copy change is low priority and not part of the current fork-integration goals
+- [x] `0f488996b` skip by default: Node build-channel wiring does not look relevant to the trimmed `my` branch runtime
+- [x] `db9389137` skip by default: Zen trial messaging is product copy churn outside current scope
+- [x] `d540d363a` skip by default: broad app/web Solid reactivity cleanup does not map cleanly to the trimmed fork surface
+- [x] `327f62526` skip by default: web-only resize observer refactor is outside `my` scope
+- [x] `69d047ae7` skip by default: event-listener cleanup is broad web/app maintenance, not a targeted fork fix
+- [x] `ec3ae17e4` skip by default: nix hash refresh only
+- [x] `23c865608` already integrated on `my`: config model definitions are decoupled from `models.dev` in local config/provider code
+- [ ] `57a5236e7` is not independently useful: only regenerate SDK/artifacts if a selected upstream API/schema change is actually ported
 
 ## Pass 2: TUI quality-of-life improvements
 
@@ -131,7 +155,7 @@
 - [x] `26fb6b878` add Effect-returning versions of MessageV2 functions (partially integrated into local `packages/kx/src/session/message.ts`: page/stream/parts/get/filterCompacted now run synchronously over the existing DB facade, `packages/kx/src/session/index.ts` and `packages/kx/src/session/summary.ts` were updated to use the non-async message helpers directly, and `packages/kx/test/session/messages-pagination.test.ts` now covers the sync API shape; skipped the upstream `MessageV2`/Effect-layer migration because this fork still uses `Message` and mixed async facades outside the newer Effect session stack)
 - [x] `181b5f623` use Provider service in effect layers (skip: upstream change assumes the newer Effect `Provider.Service` / `Provider.defaultLayer` stack in `packages/opencode/src/provider/provider.ts` plus Effect-layered `session/prompt`, `session/compaction`, and `agent` services. Local `packages/kx/src/provider/provider.ts` still exposes only async facade functions like `Provider.getModel(...)` with no exported Effect service or default layer, and `packages/kx/test/session/prompt.test.ts` still exercises this area with direct `spyOn(Provider, "getModel")` mocks. There is no narrow behavior fix here to port without first adopting the broader provider-service migration covered by later pass-5 commits, so this commit is not worth bringing into `my` on its own.)
 - [x] `2f405daa9` use Effect services instead of async facades in provider/auth/file (partially integrated: local `packages/kx/src/provider/provider.ts` still does not expose the upstream Effect `Provider.Service`, so I skipped the provider half, but `packages/kx/src/provider/auth.ts` now builds its hook state from `Plugin.Service` and its default layer provides `Plugin.layer`, and `packages/kx/src/file/index.ts` now uses `AppFileSystem.Service` for global-home directory scanning plus keeps `search()` in direct Effect code instead of wrapping it in `Effect.promise`; added `packages/kx/src/file/index.ts` `defaultLayer` so the file service resolves its filesystem dependency through `makeRunPromise`)
-- [ ] `3fc0367b9` effectify SessionRevert service
+- [x] `3fc0367b9` effectify SessionRevert service (partially integrated: local `packages/kx/src/session/revert.ts` still sits on the older async/session DB facade with direct `Session`, `Snapshot`, `Storage`, and `Bus` helpers, so I skipped the broad service/layer rewrite. The behavior-relevant part for `my` was the new revert cleanup coverage, which I ported into `packages/kx/test/session/revert-compact.test.ts` to lock in part-level cleanup, message cleanup after a revert point, and no-op cleanup when no revert state exists.)
 - [ ] `954a6ca88` effectify SessionSummary service
 - [ ] `c5442d418` effectify SessionPrompt service
 - [ ] `567a91191` simplify LLM stream by replacing queue with fromAsyncIterable
@@ -161,8 +185,8 @@
 
 ## Suggested execution order
 
-- [ ] Cherry-pick or manually port Pass 1 commits
-- [ ] Run targeted checks
+- [x] Cherry-pick or manually port Pass 1 commits (reviewed all current Pass 1 candidates; remaining ones were either already integrated or intentionally skipped earlier)
+- [x] Run targeted checks (ran `bun test test/plugin/trigger.test.ts`, `bun test test/session/prompt.test.ts`, `bun test test/snapshot/snapshot.test.ts`, `bun test test/file/time.test.ts`, and `bun typecheck` in `packages/kx`)
 - [ ] Bring selected TUI improvements from Pass 2
 - [ ] Decide whether plugin/config loading changes are needed
 - [ ] If yes, integrate Pass 3 as a focused branch of work
@@ -196,12 +220,12 @@
 
 ## Initial shortlist
 
-- [ ] `55895d066`
-- [ ] `a5b1dc081`
-- [ ] `733a3bd03`
-- [ ] `48db7cf07`
-- [ ] `880c0a747`
-- [ ] `e148b318b`
+- [x] `55895d066`
+- [x] `a5b1dc081`
+- [x] `733a3bd03`
+- [x] `48db7cf07`
+- [x] `880c0a747`
+- [x] `e148b318b`
 - [ ] `f7f41dc3a`
 - [ ] `f6fd43e57`
 - [ ] `e4ff1ea77`
