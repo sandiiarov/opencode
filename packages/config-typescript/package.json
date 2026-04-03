@@ -7,6 +7,7 @@
   "exports": {
     "./base.json": "./base.json",
     "./bun.json": "./bun.json",
-    "./node-lib.json": "./node-lib.json"
+    "./node-lib.json": "./node-lib.json",
+    "./opentui-react.json": "./opentui-react.json"
   }
 }

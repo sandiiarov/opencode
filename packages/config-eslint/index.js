@@ -2,6 +2,7 @@ import js from "@eslint/js"
 import prettier from "eslint-config-prettier"
 import checkFile from "eslint-plugin-check-file"
 import importPlugin from "eslint-plugin-import"
+import reactHooks from "eslint-plugin-react-hooks"
 import globals from "globals"
 import tseslint from "typescript-eslint"
 
@@ -91,6 +92,19 @@ export const node = () => [
 ]
 
 export const jsx = () => [
+  {
+    files: ["**/*.tsx"],
+    languageOptions: {
+      parserOptions: {
+        ecmaFeatures: {
+          jsx: true,
+        },
+      },
+    },
+  },
+]
+export const react = () => [
+  reactHooks.configs.flat["recommended-latest"],
   {
     files: ["**/*.tsx"],
     languageOptions: {
