@@ -196,10 +196,10 @@ export namespace ProviderTransform {
     for (const msg of unique([...system, ...final])) {
       const useMessageLevelOptions =
         model.providerID === "anthropic" ||
+        model.providerID === "google-vertex-anthropic" ||
         model.providerID.includes("bedrock") ||
         model.api.npm === "@ai-sdk/amazon-bedrock"
       const shouldUseContentOptions = !useMessageLevelOptions && Array.isArray(msg.content) && msg.content.length > 0
-
       if (shouldUseContentOptions) {
         const lastContent = msg.content[msg.content.length - 1]
         if (lastContent && typeof lastContent === "object") {
