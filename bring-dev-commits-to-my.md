@@ -175,7 +175,7 @@
 
 ### Review only if server route/schema changes are selected
 
-- [ ] `57a5236e7` chore: generate
+- [x] `57a5236e7` chore: generate (skip: pure generated fallout in `packages/sdk/js/src/v2/gen/types.gen.ts` and `packages/sdk/openapi.json` for upstream API/schema changes that have not been selected on `my`. No hand-written runtime behavior changes to port.)
 - [ ] `a76be695c` refactor(core): split out instance and route through workspaces
 - [ ] related `generate` commits tied to selected API changes
 
