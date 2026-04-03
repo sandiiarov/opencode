@@ -2,10 +2,10 @@ Performs additive line-id edits in files.
 
 Usage:
 - You must have fresh line ids for the file before editing it. The latest `read`, `grep`, `edit`, or `write` result is valid input. NEVER call `read` on the same file after your own `edit` or `write` just to verify the change, inspect the file, or refresh ids. Treat the returned `Updated lines` ids as authoritative and keep editing with them without rereading. Fresh ids from `grep` are valid too; if `grep` already shows the target line and enough nearby context, edit directly instead of reading that file first. Re-read that same file only after a later `edit` or `write` fails because ids are stale or missing, or if the user explicitly asks you to inspect that file again.
-- `read` and `grep` display lines as `id|line text`. Use only the plain id, like `ryh9`, in `pos` and `end`.
+- Tool output displays lines as `id|line text`. Use only the plain id, like `ryh9`, in `start` and `end`.
 - Keep edits additive and narrow. Prefer a few small line-id operations over rewriting unrelated surrounding code.
 - Each edit call applies against the original file state. Do not renumber later edits in the same call.
-- Use `replace` for line/range replacement, `append` to insert after a line id or at EOF, and `prepend` to insert before a line id or at BOF.
+- `edit` only supports line/range replacement. It cannot rename or delete files. To insert new content, replace the smallest surrounding range that keeps the file syntactically valid. Use `write` to create new files.
 - `lines` must contain only the new file content to insert or replace. Do not include line id prefixes or diff markers.
 - ALWAYS prefer editing existing files in the codebase. NEVER write new files unless explicitly required.
 - Only use emojis if the user explicitly requests it. Avoid adding emojis to files unless asked.

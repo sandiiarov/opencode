@@ -56,7 +56,7 @@ describe("tool.edit", () => {
         const result = await edit.execute(
           {
             filePath: file,
-            edits: [{ op: "replace", pos: await ref(file, 2), lines: ["dos"] }],
+            edits: [{ start: await ref(file, 2), lines: ["dos"] }],
           },
           ctx,
         )
@@ -67,7 +67,7 @@ describe("tool.edit", () => {
     })
   })
 
-  test("creates a new file with additive append edits", async () => {
+  test("fails when file does not exist", async () => {
     await using tmp = await tmpdir()
     const file = path.join(tmp.path, "new.txt")
 
@@ -75,20 +75,20 @@ describe("tool.edit", () => {
       directory: tmp.path,
       fn: async () => {
         const edit = await EditTool.init()
-        await edit.execute(
-          {
-            filePath: file,
-            edits: [{ op: "append", lines: ["alpha", "beta"] }],
-          },
-          ctx,
-        )
-
-        expect(await fs.readFile(file, "utf-8")).toBe("alpha\nbeta")
+        await expect(
+          edit.execute(
+            {
+              filePath: file,
+              edits: [{ start: "abcd", lines: ["alpha"] }],
+            },
+            ctx,
+          ),
+        ).rejects.toThrow(`File ${file} not found`)
       },
     })
   })
 
-  test("appends a blank line next to an existing blank line", async () => {
+  test("inserts a blank line by replacing the surrounding range", async () => {
     await using tmp = await tmpdir()
     const file = path.join(tmp.path, "file.txt")
     await fs.writeFile(file, "one\n\ntwo\n", "utf-8")
@@ -101,30 +101,13 @@ describe("tool.edit", () => {
         await edit.execute(
           {
             filePath: file,
-            edits: [{ op: "append", pos: await ref(file, 1), lines: [""] }],
-          },
-          ctx,
-        )
-
-        expect(await fs.readFile(file, "utf-8")).toBe("one\n\n\ntwo\n")
-      },
-    })
-  })
-
-  test("prepends a blank line next to an existing blank line", async () => {
-    await using tmp = await tmpdir()
-    const file = path.join(tmp.path, "file.txt")
-    await fs.writeFile(file, "one\n\ntwo\n", "utf-8")
-
-    await Instance.provide({
-      directory: tmp.path,
-      fn: async () => {
-        await FileTime.read(ctx.sessionID, file)
-        const edit = await EditTool.init()
-        await edit.execute(
-          {
-            filePath: file,
-            edits: [{ op: "prepend", pos: await ref(file, 3), lines: [""] }],
+            edits: [
+              {
+                start: await ref(file, 1),
+                end: await ref(file, 2),
+                lines: ["one", "", ""],
+              },
+            ],
           },
           ctx,
         )
@@ -147,7 +130,7 @@ describe("tool.edit", () => {
           edit.execute(
             {
               filePath: file,
-              edits: [{ op: "replace", pos: await ref(file, 2), lines: ["dos"] }],
+              edits: [{ start: await ref(file, 2), lines: ["dos"] }],
             },
             ctx,
           ),
@@ -171,54 +154,11 @@ describe("tool.edit", () => {
           edit.execute(
             {
               filePath: file,
-              edits: [{ op: "replace", pos: await ref(file, 2), lines: ["dos"] }],
+              edits: [{ start: await ref(file, 2), lines: ["dos"] }],
             },
             ctx,
           ),
         ).rejects.toThrow("modified since it was last read")
-      },
-    })
-  })
-
-  test("renames a file after applying edits", async () => {
-    await using tmp = await tmpdir()
-    const file = path.join(tmp.path, "old.txt")
-    const next = path.join(tmp.path, "dir", "new.txt")
-    await fs.writeFile(file, "name\n", "utf-8")
-
-    await Instance.provide({
-      directory: tmp.path,
-      fn: async () => {
-        await FileTime.read(ctx.sessionID, file)
-        const edit = await EditTool.init()
-        await edit.execute(
-          {
-            filePath: file,
-            rename: next,
-            edits: [{ op: "replace", pos: await ref(file, 1), lines: ["done"] }],
-          },
-          ctx,
-        )
-
-        await expect(fs.readFile(file, "utf-8")).rejects.toThrow()
-        expect(await fs.readFile(next, "utf-8")).toBe("done\n")
-      },
-    })
-  })
-
-  test("deletes a file", async () => {
-    await using tmp = await tmpdir()
-    const file = path.join(tmp.path, "gone.txt")
-    await fs.writeFile(file, "bye\n", "utf-8")
-
-    await Instance.provide({
-      directory: tmp.path,
-      fn: async () => {
-        await FileTime.read(ctx.sessionID, file)
-        const edit = await EditTool.init()
-        const result = await edit.execute({ filePath: file, delete: true, edits: [] }, ctx)
-        expect(result.output).toContain("Deleted file successfully")
-        await expect(fs.readFile(file, "utf-8")).rejects.toThrow()
       },
     })
   })
@@ -238,7 +178,7 @@ describe("tool.edit", () => {
         await edit.execute(
           {
             filePath: file,
-            edits: [{ op: "replace", pos: lineRef(result.output, 2), lines: ["dos"] }],
+            edits: [{ start: lineRef(result.output, 2), lines: ["dos"] }],
           },
           ctx,
         )
@@ -265,7 +205,7 @@ describe("tool.edit", () => {
           edit.execute(
             {
               filePath: file,
-              edits: [{ op: "replace", pos: `${id}|two`, lines: ["dos"] }],
+              edits: [{ start: `${id}|two`, lines: ["dos"] }],
             },
             ctx,
           ),
@@ -275,7 +215,7 @@ describe("tool.edit", () => {
           edit.execute(
             {
               filePath: file,
-              edits: [{ op: "replace", pos: "2#aa", lines: ["dos"] }],
+              edits: [{ start: "2#aa", lines: ["dos"] }],
             },
             ctx,
           ),
@@ -302,7 +242,7 @@ describe("tool.edit", () => {
         await edit.execute(
           {
             filePath: file,
-            edits: [{ op: "replace", pos: await ref(file, 2), lines: ["tres"] }],
+            edits: [{ start: await ref(file, 2), lines: ["tres"] }],
           },
           ctx,
         )
@@ -327,7 +267,7 @@ describe("tool.edit", () => {
         await edit.execute(
           {
             filePath: file,
-            edits: [{ op: "replace", pos: lineRef(result.output, 1), lines: ["dos"] }],
+            edits: [{ start: lineRef(result.output, 1), lines: ["dos"] }],
           },
           ctx,
         )
@@ -350,7 +290,7 @@ describe("tool.edit", () => {
         const first = await edit.execute(
           {
             filePath: file,
-            edits: [{ op: "replace", pos: await ref(file, 2), lines: ["dos"] }],
+            edits: [{ start: await ref(file, 2), lines: ["dos"] }],
           },
           ctx,
         )
@@ -358,7 +298,7 @@ describe("tool.edit", () => {
         await edit.execute(
           {
             filePath: file,
-            edits: [{ op: "replace", pos: lineRef(first.output, 2), lines: ["tres"] }],
+            edits: [{ start: lineRef(first.output, 2), lines: ["tres"] }],
           },
           ctx,
         )
@@ -382,7 +322,7 @@ describe("tool.edit", () => {
         const result = await edit.execute(
           {
             filePath: file,
-            edits: [{ op: "replace", pos: await ref(file, 4), lines: ['    "done"'] }],
+            edits: [{ start: await ref(file, 4), lines: ['    "done"'] }],
           },
           ctx,
         )
@@ -413,7 +353,7 @@ describe("tool.edit", () => {
         await edit.execute(
           {
             filePath: file,
-            edits: [{ op: "replace", pos: lineRef(result.output, 1), lines: ["short"] }],
+            edits: [{ start: lineRef(result.output, 1), lines: ["short"] }],
           },
           ctx,
         )
@@ -451,8 +391,7 @@ describe("tool.edit", () => {
             filePath: file,
             edits: [
               {
-                op: "replace",
-                pos: await ref(file, 2),
+                start: await ref(file, 2),
                 end: await ref(file, 4),
                 lines: ["// Explicitly exit to avoid any hanging subprocesses."],
               },
@@ -501,8 +440,7 @@ describe("tool.edit", () => {
             filePath: file,
             edits: [
               {
-                op: "replace",
-                pos: await ref(file, 3),
+                start: await ref(file, 3),
                 end: await ref(file, 5),
                 lines: ["// Explicitly exit to avoid any hanging subprocesses."],
               },
@@ -553,8 +491,7 @@ describe("tool.edit", () => {
             filePath: file,
             edits: [
               {
-                op: "replace",
-                pos: await ref(file, 2),
+                start: await ref(file, 2),
                 end: await ref(file, 3),
                 lines: [
                   '  "scripts": {',
@@ -606,8 +543,7 @@ describe("tool.edit", () => {
             filePath: file,
             edits: [
               {
-                op: "replace",
-                pos: second,
+                start: second,
                 end: third,
                 lines: ["two", "three", "four", "five"],
               },
@@ -619,7 +555,7 @@ describe("tool.edit", () => {
         await edit.execute(
           {
             filePath: file,
-            edits: [{ op: "replace", pos: tail, lines: ["tail"] }],
+            edits: [{ start: tail, lines: ["tail"] }],
           },
           ctx,
         )
@@ -648,8 +584,7 @@ describe("tool.edit", () => {
             filePath: file,
             edits: [
               {
-                op: "replace",
-                pos: body,
+                start: body,
                 lines: ["  run()", "  more()", "  done()"],
               },
             ],
@@ -660,7 +595,7 @@ describe("tool.edit", () => {
         await edit.execute(
           {
             filePath: file,
-            edits: [{ op: "prepend", pos: close, lines: ["  cleanup()"] }],
+            edits: [{ start: close, lines: ["  cleanup()", "}"] }],
           },
           ctx,
         )

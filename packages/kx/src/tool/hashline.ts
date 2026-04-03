@@ -7,21 +7,13 @@ const DIAGNOSTIC_REF = /\[([a-z0-9]{4})\|(\d+)\|(\d+)\]/gi
 const OLD_DIAGNOSTIC_REF = /\[(\d+)#[a-z0-9]{2}(?::(\d+))?\]/gi
 const ID = /^[a-z0-9]{4}$/i
 
-export type Edit =
-  | { op: "replace"; pos: string; end?: string; lines: string | string[] | null }
-  | { op: "append"; pos?: string; lines: string | string[] | null }
-  | { op: "prepend"; pos?: string; lines: string | string[] | null }
-
+export type Edit = { start: string; end?: string; lines: string | string[] | null }
 type Row = {
   id: string
   text: string
 }
 
-type Resolved =
-  | { op: "replace"; start: number; end: number; lines: string | string[] | null }
-  | { op: "append"; line?: number; lines: string | string[] | null }
-  | { op: "prepend"; line?: number; lines: string | string[] | null }
-
+type Resolved = { start: number; end: number; lines: string | string[] | null }
 export function splitContent(text: string) {
   const lines = text.split(/\r?\n/)
   if (lines.at(-1) === "") lines.pop()
@@ -105,14 +97,6 @@ function clean(lines: string | string[] | null) {
   })
 }
 
-function trimFirst(anchor: string, list: string[]) {
-  return list.length > 1 && canTrimFirst(anchor, list) ? list.slice(1) : list
-}
-
-function trimLast(anchor: string, list: string[]) {
-  return list.length > 1 && canTrimLast(anchor, list) ? list.slice(0, -1) : list
-}
-
 function normalize(line: string) {
   const text = line.replace(/\s+/g, "")
   if (/^[\]})](?:[,;])?$/.test(text)) return text.replace(/[;,]$/, "")
@@ -129,19 +113,13 @@ function indent(base: string, line: string) {
   if (!match || base.trim() === line.trim()) return line
   return match + line
 }
-
 function target(edit: Resolved) {
-  if (edit.op === "replace") return edit.end
-  return edit.line ?? Number.NEGATIVE_INFINITY
+  return edit.end
 }
 
 function overlap(edits: Resolved[]) {
   const list = edits
-    .map((edit, i) => {
-      if (edit.op !== "replace") return
-      return { start: edit.start, end: edit.end, i }
-    })
-    .filter((item): item is { start: number; end: number; i: number } => Boolean(item))
+    .map((edit, i) => ({ start: edit.start, end: edit.end, i }))
     .sort((a, b) => a.start - b.start || a.end - b.end)
   for (let i = 1; i < list.length; i++) {
     if (list[i].start <= list[i - 1].end) {
@@ -179,32 +157,16 @@ function fail(file: string, refs: string[]) {
 function resolveEdits(file: string, edits: Edit[]) {
   const bad = [] as string[]
   const list = edits.map((edit) => {
-    if (edit.op === "append" && !edit.pos) return { op: "append", lines: edit.lines } satisfies Resolved
-    if (edit.op === "prepend" && !edit.pos) return { op: "prepend", lines: edit.lines } satisfies Resolved
-    if (edit.op === "append") {
-      const line = resolve(file, edit.pos!)
-      if (typeof line !== "number") bad.push(parseRef(edit.pos!))
-      return { op: "append", line, lines: edit.lines } satisfies Resolved
-    }
-    if (edit.op === "prepend") {
-      const line = resolve(file, edit.pos!)
-      if (typeof line !== "number") bad.push(parseRef(edit.pos!))
-      return { op: "prepend", line, lines: edit.lines } satisfies Resolved
-    }
-    const startID = parseRef(edit.pos)
-    const endID = parseRef(edit.end ?? edit.pos)
-    const start = resolve(file, edit.pos)
-    const end = resolve(file, edit.end ?? edit.pos)
+    const startID = parseRef(edit.start)
+    const endID = parseRef(edit.end ?? edit.start)
+    const start = resolve(file, edit.start)
+    const end = resolve(file, edit.end ?? edit.start)
     if (typeof start !== "number") bad.push(startID)
     if (typeof end !== "number" && endID !== startID) bad.push(endID)
-    return { op: "replace", start: start ?? Number.NaN, end: end ?? Number.NaN, lines: edit.lines } satisfies Resolved
+    return { start: start ?? Number.NaN, end: end ?? Number.NaN, lines: edit.lines } satisfies Resolved
   })
   if (bad.length) fail(file, [...new Set(bad)])
   return list
-}
-
-export function canCreate(edits: Edit[]) {
-  return edits.length > 0 && edits.every((edit) => (edit.op === "append" || edit.op === "prepend") && !edit.pos)
 }
 
 export function apply(file: string, content: string, edits: Edit[]) {
@@ -215,43 +177,10 @@ export function apply(file: string, content: string, edits: Edit[]) {
   const list = [...resolved].sort((a, b) => {
     const line = target(b) - target(a)
     if (line) return line
-    const rank = { replace: 0, append: 1, prepend: 2 }
-    return rank[a.op] - rank[b.op]
+    return b.start - a.start
   })
-  let lines = [...base]
+  const lines = [...base]
   for (const edit of list) {
-    if (edit.op === "append" && !edit.line) {
-      const add = clean(edit.lines)
-      if (!add.length) throw new Error("append requires non-empty lines")
-      lines = [...lines, ...add]
-      continue
-    }
-    if (edit.op === "prepend" && !edit.line) {
-      const add = clean(edit.lines)
-      if (!add.length) throw new Error("prepend requires non-empty lines")
-      lines = [...add, ...lines]
-      continue
-    }
-    if (edit.op === "append") {
-      const line = edit.line!
-      let add = clean(edit.lines)
-      if (!add.length) throw new Error("append requires non-empty lines")
-      add = trimFirst(lines[line - 1] ?? "", add)
-      add = trimLast(lines[line] ?? "", add)
-      if (!add.length) throw new Error("append requires non-empty lines")
-      lines.splice(line, 0, ...add)
-      continue
-    }
-    if (edit.op === "prepend") {
-      const line = edit.line!
-      let add = clean(edit.lines)
-      if (!add.length) throw new Error("prepend requires non-empty lines")
-      add = trimFirst(lines[line - 2] ?? "", add)
-      add = trimLast(lines[line - 1] ?? "", add)
-      if (!add.length) throw new Error("prepend requires non-empty lines")
-      lines.splice(line - 1, 0, ...add)
-      continue
-    }
     const start = edit.start
     const end = edit.end
     if (start > end) throw new Error(`Invalid range: start line ${start} cannot be greater than end line ${end}`)

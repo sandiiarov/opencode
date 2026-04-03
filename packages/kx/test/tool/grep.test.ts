@@ -143,8 +143,7 @@ describe("tool.grep", () => {
             filePath: file,
             edits: [
               {
-                op: "replace",
-                pos: second,
+                start: second,
                 lines: ["two", "three", "four", "five"],
               },
             ],
@@ -155,7 +154,7 @@ describe("tool.grep", () => {
         await edit.execute(
           {
             filePath: file,
-            edits: [{ op: "replace", pos: tail, lines: ["tail"] }],
+            edits: [{ start: tail, lines: ["tail"] }],
           },
           ctx,
         )
@@ -186,14 +185,14 @@ describe("tool.grep", () => {
         await edit.execute(
           {
             filePath: path.join(tmp.path, "a.txt"),
-            edits: [{ op: "replace", pos: refText(result.output, "todo a"), lines: ["done a"] }],
+            edits: [{ start: refText(result.output, "todo a"), lines: ["done a"] }],
           },
           ctx,
         )
         await edit.execute(
           {
             filePath: path.join(tmp.path, "b.txt"),
-            edits: [{ op: "replace", pos: refText(result.output, "todo b"), lines: ["done b"] }],
+            edits: [{ start: refText(result.output, "todo b"), lines: ["done b"] }],
           },
           ctx,
         )

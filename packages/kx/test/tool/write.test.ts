@@ -231,7 +231,7 @@ describe("tool.write", () => {
           await edit.execute(
             {
               filePath: filepath,
-              edits: [{ op: "replace", pos: lineRef(result.output, 2), lines: ["tres"] }],
+              edits: [{ start: lineRef(result.output, 2), lines: ["tres"] }],
             },
             ctx,
           )
