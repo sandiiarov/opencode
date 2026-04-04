@@ -1,0 +1,36 @@
+export const theme = {
+  accent: {
+    soft: "#f5e0dc",
+    subtle: "#f2cdcd",
+    highlight: "#f5c2e7",
+    emphasis: "#cba6f7",
+    danger: "#f38ba8",
+    dangerSoft: "#eba0ac",
+    warning: "#fab387",
+    caution: "#f9e2af",
+    success: "#a6e3a1",
+    info: "#94e2d5",
+    signal: "#89dceb",
+    focus: "#74c7ec",
+    primary: "#89b4fa",
+    secondary: "#b4befe",
+  },
+  text: {
+    base: "#cdd6f4",
+    soft: "#bac2de",
+    muted: "#a6adc8",
+  },
+  overlay: {
+    strong: "#9399b2",
+    base: "#7f849c",
+    muted: "#6c7086",
+  },
+  surface: {
+    strong: "#585b70",
+    base: "#45475a",
+    muted: "#313244",
+    panel: "#1e1e2e",
+    background: "#181825",
+    deep: "#11111b",
+  },
+}
