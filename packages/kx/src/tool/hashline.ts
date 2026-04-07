@@ -2,10 +2,11 @@ import { FileLine } from "../file/line"
 
 const WORD = /[\p{L}\p{N}]/u
 const OUT = /^(\s*(?:>>>\s*)?)([a-z0-9]{4})\|(\d+) (.*)$/i
-const OLD_OUT = /^(\s*(?:>>>\s*)?)(\d+)#[a-z0-9]{2}(?:@[A-Za-z0-9_-]+)?\|(.*)$/i
 const DIAGNOSTIC_REF = /\[([a-z0-9]{4})\|(\d+)\|(\d+)\]/gi
-const OLD_DIAGNOSTIC_REF = /\[(\d+)#[a-z0-9]{2}(?::(\d+))?\]/gi
 const ID = /^[a-z0-9]{4}$/i
+const TOKEN = /^([a-z0-9]{4})\|(\d+)(?:\s|$)/i
+const DIAGNOSTIC = /^\[([a-z0-9]{4})\|(\d+)\|(\d+)\]$/i
+const NUMBER = /^\d+$/
 
 export type Edit = { start: string; end?: string; lines: string | string[] | null }
 type Row = {
@@ -43,14 +44,10 @@ export function renderNumberedOutput(text: string) {
         refs.set(match[2], line)
         return `${match[1]}${line}: ${match[4]}`
       }
-      const legacy = item.match(OLD_OUT)
-      if (legacy) return `${legacy[1]}${legacy[2]}: ${legacy[3]}`
-      return item
-        .replace(DIAGNOSTIC_REF, (_, id: string, row: string, col: string) => {
-          const value = refs.get(id) ?? row
-          return `[${value}:${col}]`
-        })
-        .replace(OLD_DIAGNOSTIC_REF, (_, row: string, col?: string) => `[${row}${col ? `:${col}` : ""}]`)
+      return item.replace(DIAGNOSTIC_REF, (_, id: string, row: string, col: string) => {
+        const value = refs.get(id) ?? row
+        return `[${value}:${col}]`
+      })
     })
     .join("\n")
 }
@@ -138,27 +135,63 @@ function canTrimLast(anchor: string, list: string[]) {
   return list.length > 0 && same(list[list.length - 1], anchor)
 }
 
-function parseRef(ref: string) {
+function lineAt(file: string, line: number) {
+  const rows = FileLine.get(file)?.lines
+  if (!rows) return
+  return { total: rows.length, row: rows[line - 1] }
+}
+
+function invalidRef(file: string, ref: string, value: string) {
+  const token = value.match(TOKEN)
+  if (token) {
+    const [, id, row] = token
+    const line = Number.parseInt(row, 10)
+    const hit = lineAt(file, line)
+    const msg = `Invalid line reference format: "${ref}". You passed a full line token. Use only the plain line id "${id}".`
+    if (!hit?.row || hit.row.id === id) return msg
+    return `${msg}\nThat token looks stale: line ${line} currently has id "${hit.row.id}".`
+  }
+
+  const diagnostic = value.match(DIAGNOSTIC)
+  if (diagnostic) {
+    const [, id] = diagnostic
+    return `Invalid line reference format: "${ref}". You passed a diagnostic reference. Use only the plain line id "${id}".`
+  }
+
+  if (NUMBER.test(value)) {
+    const line = Number.parseInt(value, 10)
+    const hit = lineAt(file, line)
+    if (hit?.row) {
+      return `Invalid line reference format: "${ref}". Expected a plain line id like "${hit.row.id}", not a line number. Line ${line} currently has id "${hit.row.id}".`
+    }
+    if (hit)
+      return `Invalid line reference format: "${ref}". Line ${line} is out of range for this file (${hit.total} lines). Expected a plain line id like "ryh9".`
+  }
+
+  return `Invalid line reference format: "${ref}". Expected a plain line id like "ryh9".`
+}
+
+function parseRef(file: string, ref: string) {
   const value = ref.trim().replace(/^(?:>>>|[+-])\s*/, "")
   if (ID.test(value)) return value
-  throw new Error(`Invalid line reference format: "${ref}". Expected a plain line id like "ryh9".`)
+  throw new Error(invalidRef(file, ref, value))
 }
 
 function resolve(file: string, ref: string) {
-  return FileLine.resolve(file, parseRef(ref))
+  return FileLine.resolve(file, parseRef(file, ref))
 }
 
 function fail(file: string, refs: string[]) {
   throw new Error(
-    `The targeted line ids no longer exist in ${file}: ${refs.join(", ")}\nThe file changed since those ids were observed. Read the file again before modifying it.`,
+    `The targeted line ids no longer exist in ${file}: ${refs.join(", ")}\nThe file changed since those ids were observed. Use fresh line ids from the latest read, grep, edit, or write output before modifying it.`,
   )
 }
 
 function resolveEdits(file: string, edits: Edit[]) {
   const bad = [] as string[]
   const list = edits.map((edit) => {
-    const startID = parseRef(edit.start)
-    const endID = parseRef(edit.end ?? edit.start)
+    const startID = parseRef(file, edit.start)
+    const endID = parseRef(file, edit.end ?? edit.start)
     const start = resolve(file, edit.start)
     const end = resolve(file, edit.end ?? edit.start)
     if (typeof start !== "number") bad.push(startID)
@@ -183,7 +216,10 @@ export function apply(file: string, content: string, edits: Edit[]) {
   for (const edit of list) {
     const start = edit.start
     const end = edit.end
-    if (start > end) throw new Error(`Invalid range: start line ${start} cannot be greater than end line ${end}`)
+    if (start > end)
+      throw new Error(
+        `Invalid range: start line ${start} cannot be greater than end line ${end}. Check whether start and end were swapped.`,
+      )
     let add = clean(edit.lines)
     if (start > 1 && canTrimFirst(lines[start - 2] ?? "", add)) add = add.slice(1)
     if (end < lines.length && canTrimLast(lines[end] ?? "", add)) add = add.slice(0, -1)

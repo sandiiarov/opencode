@@ -57,6 +57,7 @@ export namespace SessionRevert {
     if (revert) {
       const session = await Session.get(input.sessionID)
       revert.snapshot = session.revert?.snapshot ?? (await Snapshot.track())
+      if (session.revert?.snapshot) await Snapshot.restore(session.revert.snapshot)
       await Snapshot.revert(patches)
       if (revert.snapshot) revert.diff = await Snapshot.diff(revert.snapshot)
       const rangeMessages = all.filter((msg) => msg.info.id >= revert!.messageID)

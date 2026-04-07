@@ -6,13 +6,14 @@ import { Installation } from "../installation"
 import { Flag } from "../flag/flag"
 import { lazy } from "@/util/lazy"
 import { Filesystem } from "../util/filesystem"
+import { Hash } from "@/util/hash"
 
 // Try to import bundled snapshot (generated at build time)
 // Falls back to undefined in dev mode when snapshot doesn't exist
 
 export namespace ModelsDev {
   const log = Log.create({ service: "models.dev" })
-  const filepath = path.join(Global.Path.cache, "models.json")
+  const ttl = 5 * 60 * 1000
 
   export const Model = z.object({
     id: z.string(),
@@ -77,20 +78,73 @@ export namespace ModelsDev {
   export type Provider = z.infer<typeof Provider>
 
   function url() {
-    return Flag.KX_MODELS_URL || "https://models.dev"
+    return process.env["KX_MODELS_URL"] || Flag.KX_MODELS_URL || "https://models.dev"
+  }
+
+  function filepath() {
+    const source = url()
+    return (
+      process.env["KX_MODELS_PATH"] ??
+      Flag.KX_MODELS_PATH ??
+      path.join(Global.Path.cache, source === "https://models.dev" ? "models.json" : `models-${Hash.fast(source)}.json`)
+    )
+  }
+
+  function fresh() {
+    return Date.now() - Number(Filesystem.stat(filepath())?.mtimeMs ?? 0) < ttl
+  }
+
+  function skip(force: boolean) {
+    return !force && fresh()
+  }
+
+  const fetchApi = async () => {
+    const result = await fetch(`${url()}/api.json`, {
+      headers: {
+        "User-Agent": Installation.USER_AGENT,
+      },
+      signal: AbortSignal.timeout(10 * 1000),
+    })
+    return { ok: result.ok, text: await result.text() }
+  }
+
+  let pending: Promise<Record<string, unknown>> | undefined
+
+  const load = async (force = false) => {
+    if (pending) return pending
+    pending = (async () => {
+      const file = filepath()
+      if (skip(force)) {
+        const cached = await Filesystem.readJson<Record<string, unknown>>(file).catch(() => {})
+        if (cached) return cached
+      }
+
+      const result = await fetchApi()
+      const json = JSON.parse(result.text) as Record<string, unknown>
+      if (result.ok) {
+        await Filesystem.write(file, result.text).catch((e) => {
+          log.error("Failed to write models cache", { error: e })
+        })
+      }
+      return json
+    })().finally(() => {
+      pending = undefined
+    })
+    return pending
   }
 
   export const Data = lazy(async () => {
-    const result = await Filesystem.readJson(Flag.KX_MODELS_PATH ?? filepath).catch(() => {})
+    const file = filepath()
+    const result = await Filesystem.readJson(file).catch(() => {})
     if (result) return result
+    if (pending) return pending
 
     const snapshot = await import("./models-snapshot.js")
       .then((m) => m.snapshot as Record<string, unknown>)
       .catch(() => undefined)
     if (snapshot) return snapshot
     if (Flag.KX_DISABLE_MODELS_FETCH) return {}
-    const json = await fetch(`${url()}/api.json`).then((x) => x.text())
-    return JSON.parse(json)
+    return load(true)
   })
 
   export async function get() {
@@ -98,21 +152,21 @@ export namespace ModelsDev {
     return result as Record<string, Provider>
   }
 
-  export async function refresh() {
-    const result = await fetch(`${url()}/api.json`, {
-      headers: {
-        "User-Agent": Installation.USER_AGENT,
-      },
-      signal: AbortSignal.timeout(10 * 1000),
-    }).catch((e) => {
-      log.error("Failed to fetch models.dev", {
-        error: e,
-      })
-    })
-    if (result && result.ok) {
-      await Filesystem.write(filepath, await result.text())
+  export async function refresh(force = false) {
+    if (skip(force)) {
       ModelsDev.Data.reset()
+      return
     }
+
+    await load(force)
+      .then(() => {
+        ModelsDev.Data.reset()
+      })
+      .catch((e) => {
+        log.error("Failed to fetch models.dev", {
+          error: e,
+        })
+      })
   }
 }
 

@@ -18,7 +18,7 @@ function subtitle(part: ToolPart) {
     .join(" · ")
 }
 
-export function MessageToolGrep(props: { message: AssistantEntry; part: ToolPart }) {
+export function MessageToolEdit(props: { message: AssistantEntry; part: ToolPart }) {
   const state = props.part.state
   const text =
     "output" in state
@@ -28,12 +28,12 @@ export function MessageToolGrep(props: { message: AssistantEntry; part: ToolPart
         : JSON.stringify(state.input, null, 2)
 
   return (
-    <Message color={theme.accent.focus} onPress={() => {}}>
+    <Message color={theme.accent.warning} onPress={() => {}}>
       <MessageHeader>
-        <MessageIcon color={theme.accent.focus} isLoading={props.part.state.status === "running"}>
-          {icons.grep}
+        <MessageIcon color={theme.accent.warning} isLoading={props.part.state.status === "running"}>
+          {icons.edit}
         </MessageIcon>
-        <MessageTitle>Grep</MessageTitle>
+        <MessageTitle>Edit</MessageTitle>
         <MessageSubtitle>{subtitle(props.part)}</MessageSubtitle>
       </MessageHeader>
       <MessageContent>

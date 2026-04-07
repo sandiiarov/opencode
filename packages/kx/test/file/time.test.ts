@@ -134,7 +134,7 @@ describe("file/time", () => {
       await Instance.provide({
         directory: tmp.path,
         fn: async () => {
-          await expect(FileTime.assert(sessionID, filepath)).rejects.toThrow("You must read file")
+          await expect(FileTime.assert(sessionID, filepath)).rejects.toThrow("You must observe file")
         },
       })
     })
@@ -178,6 +178,7 @@ describe("file/time", () => {
           expect(error).toBeDefined()
           expect(error!.message).toContain("Last modification:")
           expect(error!.message).toContain("Last read:")
+          expect(error!.message).toContain("Use fresh line ids from the latest read, grep, edit, or write output")
         },
       })
     })

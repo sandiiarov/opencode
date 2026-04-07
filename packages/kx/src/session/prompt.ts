@@ -160,21 +160,6 @@ export namespace SessionPrompt {
     const message = await createUserMessage(input)
     await Session.touch(input.sessionID)
 
-    // this is backwards compatibility for allowing `tools` to be specified when
-    // prompting
-    const permissions: Permission.Ruleset = []
-    for (const [tool, enabled] of Object.entries(input.tools ?? {})) {
-      permissions.push({
-        permission: tool,
-        action: enabled ? "allow" : "deny",
-        pattern: "*",
-      })
-    }
-    if (permissions.length > 0) {
-      session.permission = permissions
-      await Session.setPermission({ sessionID: session.id, permission: permissions })
-    }
-
     if (input.noReply === true) {
       return message
     }
@@ -689,6 +674,7 @@ export namespace SessionPrompt {
         permission: session.permission,
         abort,
         sessionID,
+        parentSessionID: session.parentID,
         system,
         messages: [
           ...Message.toModelMessages(msgs, model),
@@ -1368,6 +1354,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
 
   export const ShellInput = z.object({
     sessionID: SessionID.zod,
+    messageID: MessageID.zod.optional(),
     agent: z.string(),
     model: z
       .object({
@@ -1413,8 +1400,17 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       throw error
     }
     const model = input.model ?? agent.model ?? (await lastModel(input.sessionID))
+    const existing = input.messageID
+      ? await Promise.resolve(Message.get({ sessionID: input.sessionID, messageID: input.messageID })).catch((err) => {
+          if (NotFoundError.isInstance(err)) return
+          throw err
+        })
+      : undefined
+    if (existing) {
+      throw new NamedError.Unknown({ message: `Message already exists: ${input.messageID}` })
+    }
     const userMsg: Message.User = {
-      id: MessageID.ascending(),
+      id: input.messageID ?? MessageID.ascending(),
       sessionID: input.sessionID,
       time: {
         created: Date.now(),

@@ -107,31 +107,6 @@ describe("InstructionPrompt project file selection", () => {
       },
     })
   })
-
-  test("falls back to deprecated CONTEXT.md when newer instruction files are absent", async () => {
-    await using tmp = await tmpdir({
-      init: async (dir) => {
-        await Bun.write(path.join(dir, "subdir", "CONTEXT.md"), "# Legacy Instructions")
-        await Bun.write(path.join(dir, "subdir", "nested", "file.ts"), "const x = 1")
-      },
-    })
-
-    await Instance.provide({
-      directory: tmp.path,
-      fn: async () => {
-        const system = await InstructionPrompt.systemPaths()
-        expect(system.has(path.join(tmp.path, "subdir", "CONTEXT.md"))).toBe(false)
-
-        const results = await InstructionPrompt.resolve(
-          [],
-          path.join(tmp.path, "subdir", "nested", "file.ts"),
-          "test-message-4",
-        )
-        expect(results).toHaveLength(1)
-        expect(results[0].filepath).toBe(path.join(tmp.path, "subdir", "CONTEXT.md"))
-      },
-    })
-  })
 })
 
 describe("InstructionPrompt.systemPaths KX_CONFIG_DIR", () => {

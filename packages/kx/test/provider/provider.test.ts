@@ -527,6 +527,79 @@ test("model options are merged from existing model", async () => {
     },
   })
 })
+test("model limit.input is merged from existing model", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        path.join(dir, "kx.json"),
+        JSON.stringify({
+          $schema: "https://kx.ai/config.json",
+          provider: {
+            anthropic: {
+              models: {
+                "claude-sonnet-4-20250514": {
+                  limit: {
+                    context: 200000,
+                    input: 99999,
+                    output: 10000,
+                  },
+                },
+              },
+            },
+          },
+        }),
+      )
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    init: async () => {
+      Env.set("ANTHROPIC_API_KEY", "test-api-key")
+    },
+    fn: async () => {
+      const providers = await Provider.list()
+      const model = providers[ProviderID.anthropic].models["claude-sonnet-4-20250514"]
+      expect(model.limit.input).toBe(99999)
+      expect(model.limit.context).toBeGreaterThan(0)
+      expect(model.limit.output).toBeGreaterThan(0)
+    },
+  })
+})
+
+test("model options are merged from existing model", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        path.join(dir, "kx.json"),
+        JSON.stringify({
+          $schema: "https://kx.ai/config.json",
+          provider: {
+            anthropic: {
+              models: {
+                "claude-sonnet-4-20250514": {
+                  options: {
+                    customOption: "custom-value",
+                  },
+                },
+              },
+            },
+          },
+        }),
+      )
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    init: async () => {
+      Env.set("ANTHROPIC_API_KEY", "test-api-key")
+    },
+    fn: async () => {
+      const providers = await Provider.list()
+      const model = providers[ProviderID.anthropic].models["claude-sonnet-4-20250514"]
+      expect(model.options.customOption).toBe("custom-value")
+    },
+  })
+})
 
 test("provider removed when all models filtered out", async () => {
   await using tmp = await tmpdir({

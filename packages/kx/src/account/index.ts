@@ -116,7 +116,9 @@ class TokenRefreshRequest extends Schema.Class<TokenRefreshRequest>("TokenRefres
 }) {}
 
 const clientId = "kx-cli"
-
+const eagerRefreshThreshold = Duration.minutes(5)
+const recentRefreshThreshold = Duration.minutes(1)
+const refreshed = new Map<AccountID, { time: number; token: AccessToken }>()
 const mapAccountServiceError =
   (message = "Account service operation failed") =>
   <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, AccountServiceError, R> =>
@@ -174,8 +176,16 @@ export namespace Account {
 
       const resolveToken = Effect.fnUntraced(function* (row: AccountRow) {
         const now = yield* Clock.currentTimeMillis
-        if (row.token_expiry && row.token_expiry > now) return row.access_token
-
+        const lastRefresh = refreshed.get(row.id)
+        if (row.token_expiry && row.token_expiry > now) {
+          if (row.token_expiry > now + Duration.toMillis(eagerRefreshThreshold)) return row.access_token
+          if (
+            lastRefresh?.token === row.access_token &&
+            now - lastRefresh.time < Duration.toMillis(recentRefreshThreshold)
+          ) {
+            return row.access_token
+          }
+        }
         const response = yield* executeEffectOk(
           HttpClientRequest.post(`${row.url}/auth/device/token`).pipe(
             HttpClientRequest.acceptJson,
@@ -194,7 +204,7 @@ export namespace Account {
         )
 
         const expiry = Option.some(now + Duration.toMillis(parsed.expires_in))
-
+        refreshed.set(row.id, { time: now, token: parsed.access_token })
         yield* repo.persistToken({
           accountID: row.id,
           accessToken: parsed.access_token,
@@ -346,6 +356,7 @@ export namespace Account {
         const expiry = now + Duration.toMillis(parsed.expires_in)
         const refreshToken = parsed.refresh_token
 
+        refreshed.set(account.id, { time: now, token: accessToken })
         yield* repo.persistAccount({
           id: account.id,
           email: account.email,
@@ -355,7 +366,6 @@ export namespace Account {
           expiry,
           orgID: firstOrgID,
         })
-
         return new PollSuccess({ email: account.email })
       })
 

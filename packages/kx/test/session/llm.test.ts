@@ -757,12 +757,3 @@ describe("session.llm.stream", () => {
     })
   })
 })
-
-describe("session.llm LiteLLM _noop compatibility", () => {
-  test("uses a discouraged _noop tool shape for proxy compatibility", async () => {
-    const src = await Bun.file(path.join(import.meta.dir, "../../src/session/llm.ts")).text()
-    expect(src).toContain('tools["_noop"] = tool({')
-    expect(src).toContain("Do not call this tool. It exists only for API compatibility and must never be invoked.")
-    expect(src).toContain('reason: { type: "string", description: "Unused" }')
-  })
-})

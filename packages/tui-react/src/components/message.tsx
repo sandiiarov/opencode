@@ -1,5 +1,6 @@
 import { type ReactNode, type PropsWithChildren, useState } from "react"
 import { Spinner } from "./spinner"
+import { icons } from "../lib/icons"
 import { theme } from "../lib/theme"
 
 export interface MessageProps extends PropsWithChildren {
@@ -30,12 +31,7 @@ export function Message(props: MessageProps) {
     >
       <box
         flexDirection="column"
-        gap={1}
-        paddingTop={1}
-        paddingBottom={1}
-        paddingLeft={2}
-        paddingRight={2}
-        backgroundColor={hover ? theme.surface.panel : theme.surface.background}
+        backgroundColor={hover ? theme.surface.background : theme.surface.panel}
         onMouseOver={() => setHover(true)}
         onMouseOut={() => setHover(false)}
         onMouseUp={props.onPress}
@@ -52,7 +48,7 @@ export interface MessageHeaderProps {
 
 export function MessageHeader(props: MessageHeaderProps) {
   return (
-    <box flexDirection="row" width="100%" gap={2}>
+    <box flexDirection="row" width="100%" gap={2} paddingY={1} paddingX={2}>
       {props.children}
     </box>
   )
@@ -67,12 +63,13 @@ export function MessageIcon(props: MessageIconProps) {
   return props.isLoading ? <Spinner color={props.color} /> : <text fg={props.color}>{props.children}</text>
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface MessageTitleProps extends PropsWithChildren {}
+export interface MessageTitleProps extends PropsWithChildren {
+  color: string
+}
 
 export function MessageTitle(props: MessageTitleProps) {
   return (
-    <text fg={theme.text.base}>
+    <text fg={props.color}>
       <b>{props.children}</b>
     </text>
   )
@@ -90,7 +87,7 @@ export interface MessageContentProps extends PropsWithChildren {}
 
 export function MessageContent(props: MessageContentProps) {
   return (
-    <box flexDirection="column" gap={1}>
+    <box flexDirection="column" gap={1} paddingY={1} paddingX={2}>
       {props.children}
     </box>
   )
@@ -101,7 +98,7 @@ export interface MessageFooterProps extends PropsWithChildren {}
 
 export function MessageFooter(props: MessageFooterProps) {
   return (
-    <box flexDirection="row" justifyContent="flex-end" gap={1}>
+    <box flexDirection="row" justifyContent="flex-end" gap={1} paddingY={1} paddingX={2}>
       {props.children}
     </box>
   )
@@ -114,7 +111,7 @@ export interface MessageDebugProps extends PropsWithChildren {
 export function MessageDebug(props: MessageDebugProps) {
   return (
     <box flexDirection="row" gap={1} onMouseUp={props.onPress}>
-      <text fg={theme.text.muted}></text>
+      <text fg={theme.text.muted}>{icons.debug}</text>
       <text fg={theme.text.muted}>Log</text>
     </box>
   )

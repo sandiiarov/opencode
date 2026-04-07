@@ -107,7 +107,7 @@ export namespace CopilotModels {
     headers: HeadersInit = {},
     existing: Record<string, Model> = {},
   ): Promise<Record<string, Model>> {
-    const data = await fetch(`${baseURL}/models`, { headers }).then(async (res) => {
+    const data = await fetch(`${baseURL}/models`, { headers, signal: AbortSignal.timeout(5_000) }).then(async (res) => {
       if (!res.ok) throw new Error(`Failed to fetch models: ${res.status}`)
       return schema.parse(await res.json())
     })

@@ -4,7 +4,6 @@ import { NamedError } from "@kx/util/error"
 import { fileURLToPath } from "url"
 import { Instance } from "../../src/project/instance"
 import { ModelID, ProviderID } from "../../src/provider/schema"
-import { Provider } from "../../src/provider/provider"
 import { Session } from "../../src/session"
 import { Message } from "../../src/session/message"
 import { SessionPrompt } from "../../src/session/prompt"
@@ -321,12 +320,103 @@ describe("session.prompt reread guidance", () => {
 
 describe("session.prompt tool loop", () => {
   test("continues when the previous assistant stopped with tool parts", async () => {
+    const prev = process.env.OPENAI_API_KEY
+    process.env.OPENAI_API_KEY = "test-openai-key"
+    try {
+      await using tmp = await tmpdir({
+        git: true,
+        config: {
+          agent: {
+            build: {
+              model: "openai/gpt-5.2",
+            },
+          },
+        },
+      })
+
+      await Instance.provide({
+        directory: tmp.path,
+        fn: async () => {
+          const session = await Session.create({})
+          await Session.setTitle({ sessionID: session.id, title: "tool-loop" })
+          const user = await SessionPrompt.prompt({
+            sessionID: session.id,
+            agent: "build",
+            noReply: true,
+            parts: [{ type: "text", text: "hello" }],
+          })
+          if (user.info.role !== "user") throw new Error("expected user message")
+
+          const assistant = await Session.updateMessage({
+            id: MessageID.ascending(),
+            parentID: user.info.id,
+            role: "assistant",
+            mode: "build",
+            agent: "build",
+            path: { cwd: tmp.path, root: tmp.path },
+            cost: 0,
+            tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+            modelID: user.info.model.modelID,
+            providerID: user.info.model.providerID,
+            finish: "stop",
+            time: { created: Date.now(), completed: Date.now() },
+            sessionID: session.id,
+          })
+          await Session.updatePart({
+            id: PartID.ascending(),
+            messageID: assistant.id,
+            sessionID: session.id,
+            type: "tool",
+            callID: "call-1",
+            tool: "bash",
+            state: {
+              status: "completed",
+              input: { command: "pwd" },
+              output: tmp.path,
+              title: "Bash",
+              metadata: {},
+              attachments: [],
+              time: { start: Date.now(), end: Date.now() },
+            },
+          })
+
+          const summarize = spyOn(SessionSummary, "summarize").mockResolvedValue(undefined as never)
+          const fakeCreate = ((input: Parameters<typeof SessionProcessor.create>[0]) => ({
+            message: input.assistantMessage,
+            partFromToolCall: () => undefined,
+            process: async () => {
+              input.assistantMessage.finish = "stop"
+              return "stop" as const
+            },
+          })) as any
+          const create = spyOn(SessionProcessor, "create").mockImplementation(fakeCreate)
+
+          try {
+            const result = await SessionPrompt.loop({ sessionID: session.id })
+            expect(create).toHaveBeenCalledTimes(1)
+            expect(result.info.role).toBe("assistant")
+            expect(result.info.id).not.toBe(assistant.id)
+          } finally {
+            create.mockRestore()
+            summarize.mockRestore()
+          }
+        },
+      })
+    } finally {
+      if (prev === undefined) delete process.env.OPENAI_API_KEY
+      else process.env.OPENAI_API_KEY = prev
+    }
+  })
+})
+
+describe("session.prompt shell", () => {
+  test("captures stdout and stderr in shell output", async () => {
     await using tmp = await tmpdir({
       git: true,
       config: {
         agent: {
           build: {
-            model: "kx/kimi-k2.5-free",
+            model: "openai/gpt-5.2",
           },
         },
       },
@@ -336,166 +426,106 @@ describe("session.prompt tool loop", () => {
       directory: tmp.path,
       fn: async () => {
         const session = await Session.create({})
-        const model = {
-          id: ModelID.make("kimi-k2.5-free"),
-          providerID: ProviderID.make("kx"),
-          api: { id: "kimi-k2.5-free", url: "https://example.com", npm: "@ai-sdk/openai" },
-          name: "Test model",
-          capabilities: {
-            temperature: true,
-            reasoning: false,
-            attachment: true,
-            toolcall: true,
-            input: { text: true, audio: false, image: true, video: false, pdf: true },
-            output: { text: true, audio: false, image: false, video: false, pdf: false },
-            interleaved: false,
-          },
-          cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
-          limit: { context: 200000, output: 8192 },
-          status: "active",
-          options: {},
-          headers: {},
-          release_date: "2026-01-01",
-        } as any
-        const getModel = spyOn(Provider, "getModel").mockResolvedValue(model)
-        const user = await SessionPrompt.prompt({
+        const result = await SessionPrompt.shell({
           sessionID: session.id,
           agent: "build",
-          noReply: true,
-          parts: [{ type: "text", text: "hello" }],
-        })
-        if (user.info.role !== "user") throw new Error("expected user message")
-
-        const assistant = await Session.updateMessage({
-          id: MessageID.ascending(),
-          parentID: user.info.id,
-          role: "assistant",
-          mode: "build",
-          agent: "build",
-          path: { cwd: tmp.path, root: tmp.path },
-          cost: 0,
-          tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
-          modelID: user.info.model.modelID,
-          providerID: user.info.model.providerID,
-          finish: "stop",
-          time: { created: Date.now(), completed: Date.now() },
-          sessionID: session.id,
-        })
-        await Session.updatePart({
-          id: PartID.ascending(),
-          messageID: assistant.id,
-          sessionID: session.id,
-          type: "tool",
-          callID: "call-1",
-          tool: "bash",
-          state: {
-            status: "completed",
-            input: { command: "pwd" },
-            output: tmp.path,
-            title: "Bash",
-            metadata: {},
-            attachments: [],
-            time: { start: Date.now(), end: Date.now() },
-          },
+          command: "printf out && printf err >&2",
         })
 
-        const summarize = spyOn(SessionSummary, "summarize").mockResolvedValue(undefined as never)
-        const fakeCreate = ((input: Parameters<typeof SessionProcessor.create>[0]) => ({
-          message: input.assistantMessage,
-          partFromToolCall: () => undefined,
-          process: async () => {
-            input.assistantMessage.finish = "stop"
-            return "stop" as const
-          },
-        })) as any
-        const create = spyOn(SessionProcessor, "create").mockImplementation(fakeCreate)
+        expect(result.info.role).toBe("assistant")
+        const tool = result.parts.find((part) => part.type === "tool")
+        expect(tool?.type).toBe("tool")
+        if (!tool || tool.type !== "tool" || tool.state.status !== "completed") return
 
-        try {
-          const result = await SessionPrompt.loop({ sessionID: session.id })
-          expect(getModel).toHaveBeenCalled()
-          expect(create).toHaveBeenCalledTimes(1)
-          expect(result.info.role).toBe("assistant")
-          expect(result.info.id).not.toBe(assistant.id)
-        } finally {
-          create.mockRestore()
-          summarize.mockRestore()
-          getModel.mockRestore()
-        }
+        expect(tool.state.output).toContain("out")
+        expect(tool.state.output).toContain("err")
+        expect(tool.state.metadata.output).toContain("out")
+        expect(tool.state.metadata.output).toContain("err")
+
+        await Session.remove(session.id)
       },
     })
   })
 
-  describe("session.prompt shell", () => {
-    test("captures stdout and stderr in shell output", async () => {
-      await using tmp = await tmpdir({
-        git: true,
-        config: {
-          agent: {
-            build: {
-              model: "openai/gpt-5.2",
-            },
+  test("rejects reused shell message ids", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      config: {
+        agent: {
+          build: {
+            model: "openai/gpt-5.2",
           },
         },
-      })
-
-      await Instance.provide({
-        directory: tmp.path,
-        fn: async () => {
-          const session = await Session.create({})
-          const result = await SessionPrompt.shell({
-            sessionID: session.id,
-            agent: "build",
-            command: "printf out && printf err >&2",
-          })
-
-          expect(result.info.role).toBe("assistant")
-          const tool = result.parts.find((part) => part.type === "tool")
-          expect(tool?.type).toBe("tool")
-          if (!tool || tool.type !== "tool" || tool.state.status !== "completed") return
-
-          expect(tool.state.output).toContain("out")
-          expect(tool.state.output).toContain("err")
-          expect(tool.state.metadata.output).toContain("out")
-          expect(tool.state.metadata.output).toContain("err")
-
-          await Session.remove(session.id)
-        },
-      })
+      },
     })
 
-    test("runs shell command from the project directory", async () => {
-      await using tmp = await tmpdir({
-        git: true,
-        config: {
-          agent: {
-            build: {
-              model: "openai/gpt-5.2",
-            },
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const session = await Session.create({})
+        const messageID = MessageID.ascending()
+        await Session.updateMessage({
+          id: messageID,
+          sessionID: session.id,
+          time: { created: Date.now() },
+          role: "user",
+          agent: "build",
+          model: {
+            providerID: ProviderID.make("openai"),
+            modelID: ModelID.make("gpt-5.2"),
+          },
+        })
+
+        const err = await SessionPrompt.shell({
+          sessionID: session.id,
+          messageID,
+          agent: "build",
+          command: "printf noop",
+        }).then(
+          () => undefined,
+          (e) => e,
+        )
+        expect(NamedError.Unknown.isInstance(err)).toBe(true)
+        if (NamedError.Unknown.isInstance(err)) {
+          expect(err.data.message).toBe(`Message already exists: ${messageID}`)
+        }
+
+        await Session.remove(session.id)
+      },
+    })
+  })
+  test("runs shell command from the project directory", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      config: {
+        agent: {
+          build: {
+            model: "openai/gpt-5.2",
           },
         },
-      })
-      await Bun.write(path.join(tmp.path, "README.md"), "# test\n")
+      },
+    })
+    await Bun.write(path.join(tmp.path, "README.md"), "# test\n")
 
-      await Instance.provide({
-        directory: tmp.path,
-        fn: async () => {
-          const session = await Session.create({})
-          const result = await SessionPrompt.shell({
-            sessionID: session.id,
-            agent: "build",
-            command: "pwd && command ls",
-          })
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const session = await Session.create({})
+        const result = await SessionPrompt.shell({
+          sessionID: session.id,
+          agent: "build",
+          command: "pwd && command ls",
+        })
 
-          const tool = result.parts.find((part) => part.type === "tool")
-          expect(tool?.type).toBe("tool")
-          if (!tool || tool.type !== "tool" || tool.state.status !== "completed") return
+        const tool = result.parts.find((part) => part.type === "tool")
+        expect(tool?.type).toBe("tool")
+        if (!tool || tool.type !== "tool" || tool.state.status !== "completed") return
 
-          expect(tool.state.output).toContain(tmp.path)
-          expect(tool.state.output).toContain("README.md")
+        expect(tool.state.output).toContain(tmp.path)
+        expect(tool.state.output).toContain("README.md")
 
-          await Session.remove(session.id)
-        },
-      })
+        await Session.remove(session.id)
+      },
     })
   })
 })

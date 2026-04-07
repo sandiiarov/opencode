@@ -36,7 +36,6 @@ export const base = () => [
     rules: {
       "@typescript-eslint/ban-ts-comment": "error",
       "@typescript-eslint/consistent-type-imports": ["error", { fixStyle: "separate-type-imports" }],
-      "@typescript-eslint/no-empty-object-type": "error",
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-namespace": "error",
       "@typescript-eslint/no-require-imports": "error",

@@ -7,19 +7,18 @@ import {
   MessageIcon,
   MessageTitle,
 } from "./message"
-import { type AssistantMessage, type TextPart } from "../mock-types"
+import { icons } from "../lib/icons"
+import { type AssistantEntry, type TextPart } from "../mock-types"
 import { theme } from "../lib/theme"
 
-export function MessageAssistant(props: { message: AssistantMessage; part: TextPart }) {
+export function MessageAssistant(props: { message: AssistantEntry; part: TextPart }) {
   return (
-    <Message color={theme.accent.success} onPress={() => {}}>
+    <Message color={theme.text.base} onPress={() => {}}>
       <MessageHeader>
-        <MessageIcon color={theme.accent.success} isLoading={false}>
-          
+        <MessageIcon color={theme.text.base} isLoading={false}>
+          {icons.assistant}
         </MessageIcon>
-        <box flexDirection="column" flexGrow={1}>
-          <MessageTitle>Assistant</MessageTitle>
-        </box>
+        <MessageTitle color={theme.text.base}>assistant</MessageTitle>
       </MessageHeader>
       <MessageContent>
         <text>{props.part.text}</text>

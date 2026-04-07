@@ -8,33 +8,34 @@ import {
   MessageSubtitle,
   MessageTitle,
 } from "./message"
-import { type AssistantMessage, type ToolPart } from "../mock-types"
+import { icons } from "../lib/icons"
+import { type AssistantEntry, type ToolPart } from "../mock-types"
 import { theme } from "../lib/theme"
 
-function subtitle(message: AssistantMessage) {
-  const { info } = message
-  const duration = info.time.completed
-    ? `${((info.time.completed - info.time.created) / 1000).toFixed(1)}s`
+function subtitle(message: AssistantEntry) {
+  const duration = message.info.time.completed
+    ? `${((message.info.time.completed - message.info.time.created) / 1000).toFixed(1)}s`
     : "streaming"
-  return `${info.agent} · ${info.modelID} · ${duration}`
+  return `${message.info.agent} · ${message.info.modelID} · ${duration}`
 }
 
-export function MessageToolWrite(props: { message: AssistantMessage; part: ToolPart }) {
+export function MessageToolWrite(props: { message: AssistantEntry; part: ToolPart }) {
+  const state = props.part.state
   const text =
-    props.part.state.status === "running"
-      ? JSON.stringify(props.part.state.input, null, 2)
-      : `${props.part.state.output}\n\nInput:\n${JSON.stringify(props.part.state.input, null, 2)}`
+    "output" in state
+      ? `${state.output}\n\nInput:\n${JSON.stringify(state.input, null, 2)}`
+      : state.status === "error"
+        ? `${state.error}\n\nInput:\n${JSON.stringify(state.input, null, 2)}`
+        : JSON.stringify(state.input, null, 2)
 
   return (
     <Message color={theme.accent.warning} onPress={() => {}}>
       <MessageHeader>
         <MessageIcon color={theme.accent.warning} isLoading={props.part.state.status === "running"}>
-          
+          {icons.write}
         </MessageIcon>
-        <box flexDirection="column" flexGrow={1}>
-          <MessageTitle>Write</MessageTitle>
-          <MessageSubtitle>{subtitle(props.message)}</MessageSubtitle>
-        </box>
+        <MessageTitle>Write</MessageTitle>
+        <MessageSubtitle>{subtitle(props.message)}</MessageSubtitle>
       </MessageHeader>
       <MessageContent>
         <text>{text}</text>

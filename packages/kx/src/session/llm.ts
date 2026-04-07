@@ -1,16 +1,7 @@
 import { Installation } from "@/installation"
 import { Provider } from "@/provider/provider"
 import { Log } from "@/util/log"
-import {
-  streamText,
-  wrapLanguageModel,
-  type ModelMessage,
-  type StreamTextResult,
-  type Tool,
-  type ToolSet,
-  tool,
-  jsonSchema,
-} from "ai"
+import { streamText, wrapLanguageModel, type ModelMessage, type StreamTextResult, type Tool, type ToolSet } from "ai"
 import { mergeDeep, pipe } from "remeda"
 import { GitLabWorkflowLanguageModel } from "gitlab-ai-provider"
 import { ProviderTransform } from "@/provider/transform"
@@ -31,6 +22,7 @@ export namespace LLM {
   export type StreamInput = {
     user: Message.User
     sessionID: string
+    parentSessionID?: string
     model: Provider.Model
     agent: Agent.Info
     permission?: Permission.Ruleset
@@ -168,30 +160,6 @@ export namespace LLM {
 
     const tools = await resolveTools(input)
 
-    // LiteLLM and some Anthropic proxies require the tools parameter to be present
-    // when message history contains tool calls, even if no tools are being used.
-    // Add a dummy tool that is never called to satisfy this validation.
-    // This is enabled for:
-    // 1. Providers with "litellm" in their ID or API ID (auto-detected)
-    // 2. Providers with explicit "litellmProxy: true" option (opt-in for custom gateways)
-    const isLiteLLMProxy =
-      provider.options?.["litellmProxy"] === true ||
-      input.model.providerID.toLowerCase().includes("litellm") ||
-      input.model.api.id.toLowerCase().includes("litellm")
-
-    if (isLiteLLMProxy && Object.keys(tools).length === 0 && hasToolCalls(input.messages)) {
-      tools["_noop"] = tool({
-        description: "Do not call this tool. It exists only for API compatibility and must never be invoked.",
-        inputSchema: jsonSchema({
-          type: "object",
-          properties: {
-            reason: { type: "string", description: "Unused" },
-          },
-        }),
-        execute: async () => ({ output: "", title: "", metadata: {} }),
-      })
-    }
-
     // Wire up toolExecutor for DWS workflow models so that tool calls
     // from the workflow service are executed via kx's tool system
     // and results sent back over the WebSocket.
@@ -262,6 +230,8 @@ export namespace LLM {
           ? {
               "x-kx-project": Instance.project.id,
               "x-kx-session": input.sessionID,
+              "x-session-affinity": input.sessionID,
+              ...(input.parentSessionID ? { "x-parent-session-id": input.parentSessionID } : {}),
               "x-kx-request": input.user.id,
               "x-kx-client": Flag.KX_CLIENT,
             }

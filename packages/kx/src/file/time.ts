@@ -92,7 +92,9 @@ export namespace FileTime {
         const reads = (yield* InstanceState.get(state)).reads
         const time = reads.get(sessionID)?.get(filepath)
         if (!time) {
-          throw new Error(`You must read file ${filepath} before overwriting it. Use the Read tool first.`)
+          throw new Error(
+            `You must observe file ${filepath} before modifying it. Use the latest read, grep, edit, or write output for this file first.`,
+          )
         }
 
         const next = yield* stamp(filepath)
@@ -100,7 +102,7 @@ export namespace FileTime {
         if (!changed) return
 
         throw new Error(
-          `File ${filepath} has been modified since it was last read.\nLast modification: ${new Date(next.mtime ?? next.read.getTime()).toISOString()}\nLast read: ${time.read.toISOString()}\n\nPlease read the file again to get fresh line ids before modifying it.`,
+          `File ${filepath} has been modified since it was last read.\nLast modification: ${new Date(next.mtime ?? next.read.getTime()).toISOString()}\nLast read: ${time.read.toISOString()}\n\nUse fresh line ids from the latest read, grep, edit, or write output before modifying it again.`,
         )
       })
 

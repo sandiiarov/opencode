@@ -7,6 +7,18 @@ afterEach(() => {
   globalThis.fetch = originalFetch
 })
 
+test("uses an abort timeout when fetching copilot models", async () => {
+  let init: RequestInit | undefined
+  globalThis.fetch = mock((_url, next) => {
+    init = next
+    return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }))
+  }) as unknown as typeof fetch
+
+  await CopilotModels.get("https://api.githubcopilot.com")
+
+  expect(init?.signal).toBeInstanceOf(AbortSignal)
+})
+
 test("preserves temperature support from existing provider models", async () => {
   globalThis.fetch = mock(() =>
     Promise.resolve(

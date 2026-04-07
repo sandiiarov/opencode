@@ -1,133 +1,35 @@
-export type UserInfo = {
-  id: string
-  sessionID: string
-  role: "user"
-  time: {
-    created: number
-  }
-  agent: string
-  model: {
-    providerID: string
-    modelID: string
-  }
-}
+import {
+  type AssistantMessage as AssistantInfo,
+  type FilePart,
+  type Message,
+  type Part,
+  type ReasoningPart,
+  type TextPart,
+  type ToolPart,
+  type UserMessage as UserInfo,
+} from "@kx/sdk/v2"
 
-export type AssistantInfo = {
-  id: string
-  sessionID: string
-  role: "assistant"
-  parentID: string
-  time: {
-    created: number
-    completed?: number
-  }
-  providerID: string
-  modelID: string
-  agent: string
-  mode: string
-  path: {
-    cwd: string
-    root: string
-  }
-  cost: number
-  tokens: {
-    input: number
-    output: number
-    reasoning: number
-    cache: {
-      read: number
-      write: number
-    }
-    total?: number
-  }
-  finish?: string
-}
-
-export type TextPart = {
-  id: string
-  sessionID: string
-  messageID: string
-  type: "text"
-  text: string
-  synthetic?: boolean
-}
-
-export type ReasoningPart = {
-  id: string
-  sessionID: string
-  messageID: string
-  type: "reasoning"
-  text: string
-  time: {
-    start: number
-    end?: number
-  }
-}
-
-export type FilePart = {
-  id: string
-  sessionID: string
-  messageID: string
-  type: "file"
-  mime: string
-  filename?: string
-  url: string
-}
-
-export type ToolStateRunning = {
-  status: "running"
-  input: Record<string, unknown>
-  title?: string
-  metadata?: Record<string, unknown>
-  time: {
-    start: number
-  }
-}
-
-export type ToolStateCompleted = {
-  status: "completed"
-  input: Record<string, unknown>
-  output: string
-  title: string
-  metadata: Record<string, unknown>
-  time: {
-    start: number
-    end: number
-  }
-}
-
-export type ToolPart = {
-  id: string
-  sessionID: string
-  messageID: string
-  type: "tool"
-  callID: string
-  tool: string
-  state: ToolStateRunning | ToolStateCompleted
-}
-
-export type Part = TextPart | ReasoningPart | FilePart | ToolPart
-export type Info = UserInfo | AssistantInfo
+export type Info = Message
 export type Entry = {
   info: Info
   parts: Part[]
 }
 
-export type UserMessage = {
+export type UserEntry = Entry & {
   info: UserInfo
-  parts: Part[]
 }
 
-export type AssistantMessage = {
+export type AssistantEntry = Entry & {
   info: AssistantInfo
-  parts: Part[]
 }
 
-export function isUserMessage(message: Entry): message is UserMessage {
+export { type FilePart, type Part, type ReasoningPart, type TextPart, type ToolPart, type UserInfo, type AssistantInfo }
+
+export function isUserMessage(message: Entry): message is UserEntry {
   return message.info.role === "user"
 }
 
-export function isAssistantMessage(message: Entry): message is AssistantMessage {
+export function isAssistantMessage(message: Entry): message is AssistantEntry {
   return message.info.role === "assistant"
 }
 

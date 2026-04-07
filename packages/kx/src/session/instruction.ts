@@ -17,11 +17,7 @@ function claudePromptDisabled() {
 }
 
 function files() {
-  return [
-    "AGENTS.md",
-    ...(claudePromptDisabled() ? [] : ["CLAUDE.md"]),
-    "CONTEXT.md", // deprecated
-  ]
+  return ["AGENTS.md", ...(claudePromptDisabled() ? [] : ["CLAUDE.md"])]
 }
 
 function globalFiles() {

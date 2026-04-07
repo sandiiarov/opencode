@@ -134,7 +134,7 @@ describe("tool.edit", () => {
             },
             ctx,
           ),
-        ).rejects.toThrow("You must read file")
+        ).rejects.toThrow("You must observe file")
       },
     })
   })
@@ -188,7 +188,7 @@ describe("tool.edit", () => {
     })
   })
 
-  test("rejects non-id edit references", async () => {
+  test("suggests how to fix common invalid edit references", async () => {
     await using tmp = await tmpdir()
     const file = path.join(tmp.path, "file.txt")
     await fs.writeFile(file, "one\ntwo\nthree\n", "utf-8")
@@ -205,17 +205,47 @@ describe("tool.edit", () => {
           edit.execute(
             {
               filePath: file,
-              edits: [{ start: `${id}|two`, lines: ["dos"] }],
+              edits: [{ start: `${id}|2 two`, lines: ["dos"] }],
             },
             ctx,
           ),
-        ).rejects.toThrow('Expected a plain line id like "ryh9"')
+        ).rejects.toThrow(`Use only the plain line id "${id}"`)
 
         await expect(
           edit.execute(
             {
               filePath: file,
-              edits: [{ start: "2#aa", lines: ["dos"] }],
+              edits: [{ start: `[${id}|2|1]`, lines: ["dos"] }],
+            },
+            ctx,
+          ),
+        ).rejects.toThrow(`Use only the plain line id "${id}"`)
+
+        await expect(
+          edit.execute(
+            {
+              filePath: file,
+              edits: [{ start: "2", lines: ["dos"] }],
+            },
+            ctx,
+          ),
+        ).rejects.toThrow(`Line 2 currently has id "${id}"`)
+
+        await expect(
+          edit.execute(
+            {
+              filePath: file,
+              edits: [{ start: "9", lines: ["dos"] }],
+            },
+            ctx,
+          ),
+        ).rejects.toThrow("Line 9 is out of range for this file (3 lines)")
+
+        await expect(
+          edit.execute(
+            {
+              filePath: file,
+              edits: [{ start: "wat", lines: ["dos"] }],
             },
             ctx,
           ),
@@ -603,6 +633,35 @@ describe("tool.edit", () => {
         expect(await fs.readFile(file, "utf-8")).toBe(
           ["const x = () => {", "  run()", "  more()", "  done()", "  cleanup()", "}", "after()", ""].join("\n"),
         )
+      },
+    })
+  })
+  test("suggests swapped edit ranges", async () => {
+    await using tmp = await tmpdir()
+    const file = path.join(tmp.path, "file.txt")
+    await fs.writeFile(file, "one\ntwo\nthree\n", "utf-8")
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        await FileTime.read(ctx.sessionID, file)
+        const edit = await EditTool.init()
+
+        await expect(
+          edit.execute(
+            {
+              filePath: file,
+              edits: [
+                {
+                  start: await ref(file, 3),
+                  end: await ref(file, 2),
+                  lines: ["dos"],
+                },
+              ],
+            },
+            ctx,
+          ),
+        ).rejects.toThrow("Check whether start and end were swapped")
       },
     })
   })

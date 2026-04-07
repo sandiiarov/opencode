@@ -52,7 +52,6 @@ async function handlePluginAuth(plugin: { auth: PluginAuth }, provider: string, 
         const matches = prompt.when.op === "eq" ? value === prompt.when.value : value !== prompt.when.value
         if (!matches) continue
       }
-      if (prompt.condition && !prompt.condition(inputs)) continue
       if (prompt.type === "select") {
         const value = await prompts.select({
           message: prompt.message,
@@ -303,7 +302,7 @@ export const ProvidersLoginCommand = cmd({
           prompts.outro("Done")
           return
         }
-        await ModelsDev.refresh().catch(() => {})
+        await ModelsDev.refresh(true).catch(() => {})
 
         const config = await Config.get()
 

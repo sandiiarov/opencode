@@ -8,7 +8,8 @@ import {
   MessageSubtitle,
   MessageTitle,
 } from "./message"
-import { type AssistantMessage, type ToolPart } from "../mock-types"
+import { icons } from "../lib/icons"
+import { type AssistantEntry, type ToolPart } from "../mock-types"
 import { theme } from "../lib/theme"
 
 function subtitle(part: ToolPart) {
@@ -17,22 +18,23 @@ function subtitle(part: ToolPart) {
     .join(" · ")
 }
 
-export function MessageToolRead(props: { message: AssistantMessage; part: ToolPart }) {
+export function MessageToolRead(props: { message: AssistantEntry; part: ToolPart }) {
+  const state = props.part.state
   const text =
-    props.part.state.status === "running"
-      ? JSON.stringify(props.part.state.input, null, 2)
-      : `${props.part.state.output}\n\nInput:\n${JSON.stringify(props.part.state.input, null, 2)}`
+    "output" in state
+      ? `${state.output}\n\nInput:\n${JSON.stringify(state.input, null, 2)}`
+      : state.status === "error"
+        ? `${state.error}\n\nInput:\n${JSON.stringify(state.input, null, 2)}`
+        : JSON.stringify(state.input, null, 2)
 
   return (
     <Message color={theme.accent.primary} onPress={() => {}}>
       <MessageHeader>
         <MessageIcon color={theme.accent.primary} isLoading={props.part.state.status === "running"}>
-          󰈙
+          {icons.read}
         </MessageIcon>
-        <box flexDirection="column" flexGrow={1}>
-          <MessageTitle>Read</MessageTitle>
-          <MessageSubtitle>{subtitle(props.part)}</MessageSubtitle>
-        </box>
+        <MessageTitle>Read</MessageTitle>
+        <MessageSubtitle>{subtitle(props.part)}</MessageSubtitle>
       </MessageHeader>
       <MessageContent>
         <text>{text}</text>
