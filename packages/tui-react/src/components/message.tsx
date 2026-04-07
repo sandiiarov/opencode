@@ -64,12 +64,12 @@ export function MessageIcon(props: MessageIconProps) {
 }
 
 export interface MessageTitleProps extends PropsWithChildren {
-  color: string
+  color?: string
 }
 
 export function MessageTitle(props: MessageTitleProps) {
   return (
-    <text fg={props.color}>
+    <text fg={props.color ?? theme.text.base}>
       <b>{props.children}</b>
     </text>
   )
